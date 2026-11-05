@@ -1,0 +1,5 @@
+# dsh-ferry bundle: one Host row. Peers, transfer scope, and limits are
+# configured on this row in the profile's own cordis.patch.yml.
+- insert:
+    - id: dsh-ferry
+      name: dsh-ferry

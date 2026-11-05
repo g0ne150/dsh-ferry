@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="dsh-ferry">
+  <rect width="64" height="64" rx="14" fill="#0f2a3d"/>
+  <path d="M12 31h18" stroke="#7fd1ff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M30 31h22" stroke="#7fd1ff" stroke-width="4" stroke-linecap="round" stroke-dasharray="2 7"/>
+  <circle cx="14" cy="31" r="6" fill="#7fd1ff"/>
+  <circle cx="50" cy="31" r="6" fill="#f5b544"/>
+  <path d="M20 45h24l-4 7H24z" fill="#f5b544"/>
+  <path d="M32 18v9" stroke="#f5b544" stroke-width="3" stroke-linecap="round"/>
+  <path d="M27 21l5-5 5 5" fill="none" stroke="#f5b544" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

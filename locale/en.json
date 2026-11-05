@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "dsh-ferry",
+    "description": "Push or pull Sessions, along with the Workspace files they need, between DSH instances that can reach each other."
+  }
+}
