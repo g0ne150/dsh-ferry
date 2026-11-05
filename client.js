@@ -75,7 +75,7 @@ window.__ModuleLoader__.load({
         'Push a Session (and the files it needs) to a connected DSH instance, or pull one back. Instances must be able to reach each other; configure peers below.',
       instances: 'Peers',
       thisInstance: 'This instance',
-      noPeers: 'No peers yet. Add one with its DSH web URL and a shared token.',
+      noPeers: 'No peers yet. Add one with its DSH web URL. Receiving pushes only needs the same token and incoming directory.',
       addPeer: 'Add peer',
       save: 'Save settings',
       saving: 'Saving…',
@@ -95,7 +95,9 @@ window.__ModuleLoader__.load({
       incomingRoot: 'Incoming workspace directory',
       incomingRootHint:
         'When a received workspace has no directory on this machine, it lands here, in a subdirectory named after the source workspace and session.',
-      peersHint: 'Both instances must share the same token. The token never leaves this machine.',
+      peersHint:
+        'One shared token covers every instance. Only the side that can reach the other needs a peer entry; the receiving side just needs the same token and an incoming directory. The token never leaves this machine.',
+      tokenHint: 'Fleet-wide shared token. Leave blank to keep the current one.',
       pullSection: 'Pull a session',
       pullHint: 'Choose a peer, load its sessions, then pull one here.',
       loadRemote: 'Load sessions',
@@ -159,6 +161,7 @@ window.__ModuleLoader__.load({
       code_unauthorized: 'The peer rejected the token. Both sides must share the same token.',
       code_unauthenticated: 'The peer rejected the request signature. Both sides must share the same token.',
       code_replayed: 'The peer rejected a replayed request; check the clocks on both machines.',
+      code_no_token: 'No shared token is configured; set one in the dsh-ferry panel.',
     };
 
     const zh = {
@@ -167,7 +170,7 @@ window.__ModuleLoader__.load({
         '把会话以及它需要的工作区文件推送到另一个可达的 DSH 实例，或从对端拉取。实例之间必须网络可达；在下方配置对端。',
       instances: '实例',
       thisInstance: '本实例',
-      noPeers: '还没有对端。填写对端的 DSH Web 地址和共享令牌即可添加。',
+      noPeers: '还没有对端。填写对端的 DSH Web 地址即可添加；只被动接收推送的一侧，只需要相同令牌和接收目录。',
       addPeer: '添加实例',
       save: '保存配置',
       saving: '保存中…',
@@ -186,7 +189,9 @@ window.__ModuleLoader__.load({
       latency: '毫秒',
       incomingRoot: '工作区接收目录',
       incomingRootHint: '收到的会话如果没有本机映射目录，会放到这里，并以“源工作区名-会话 ID”建立子目录。',
-      peersHint: '两端必须使用同一个令牌。令牌不会离开本机。',
+      peersHint:
+        '同一个令牌适用于所有实例。只有能主动访问对方的一侧需要添加对端；接收侧只需相同令牌和接收目录。令牌不会离开本机。',
+      tokenHint: '全局共享令牌，所有实例一致；留空保持不变。',
       pullSection: '拉取会话',
       pullHint: '选择对端，加载它的会话列表，然后拉取到本机。',
       loadRemote: '加载会话',
@@ -250,6 +255,7 @@ window.__ModuleLoader__.load({
       code_unauthorized: '对端拒绝了令牌。两端必须使用同一个令牌。',
       code_unauthenticated: '对端拒绝了请求签名。两端必须使用同一个令牌。',
       code_replayed: '对端拒绝了重放请求；检查两端的时钟。',
+      code_no_token: '还没有配置共享令牌；请在 dsh-ferry 面板里设置。',
     };
 
     /** Module-scoped toast bus shared by the panel, the menu item and the overlay. */
@@ -418,6 +424,8 @@ window.__ModuleLoader__.load({
       const [statusError, setStatusError] = useState(null);
       const [checking, setChecking] = useState(false);
       const [saving, setSaving] = useState(false);
+      const [token, setToken] = useState('');
+      const [tokenSet, setTokenSet] = useState(false);
       const [notice, setNotice] = useState(null);
       const [pullPeer, setPullPeer] = useState('');
       const [remote, setRemote] = useState({ peer: null, loading: false, sessions: [], error: null });
@@ -432,10 +440,10 @@ window.__ModuleLoader__.load({
             id: peer.id,
             name: peer.name ?? '',
             url: peer.url ?? '',
-            token: '',
-            tokenSet: peer.tokenSet === true,
           })),
         );
+        setToken('');
+        setTokenSet(next?.tokenSet === true);
         setIncomingRoot(next?.incomingRoot ?? '');
         if (next?.peers?.length > 0) setPullPeer((current) => (current === '' ? next.peers[0].id : current));
       }, []);
@@ -493,7 +501,7 @@ window.__ModuleLoader__.load({
         const suffix = Math.random().toString(36).slice(2, 8);
         setDraftPeers((current) => [
           ...current,
-          { id: `peer-${suffix}`, name: '', url: '', token: '', tokenSet: false },
+          { id: `peer-${suffix}`, name: '', url: '' },
         ]);
       };
 
@@ -503,16 +511,16 @@ window.__ModuleLoader__.load({
         try {
           for (const peer of draftPeers) {
             if (peer.url.trim() === '') throw new Error(t('urlNeeded'));
-            if (!peer.tokenSet && peer.token.trim() === '') throw new Error(t('tokenNeeded'));
           }
+          if (draftPeers.length > 0 && !tokenSet && token.trim() === '') throw new Error(t('tokenNeeded'));
           const payload = await rpc({
             action: 'saveSettings',
             incomingRoot,
+            ...(token.trim() === '' ? {} : { token: token.trim() }),
             peers: draftPeers.map((peer) => ({
               id: peer.id,
               name: peer.name.trim() === '' ? peer.id : peer.name.trim(),
               url: peer.url.trim(),
-              ...(peer.token.trim() === '' ? {} : { token: peer.token.trim() }),
             })),
           });
           applySettings(payload.settings);
@@ -608,6 +616,24 @@ window.__ModuleLoader__.load({
             ),
           ),
           h('div', { className: 'ferry-meta', style: { marginTop: '6px' } }, t('peersHint')),
+          h(
+            'div',
+            { style: { marginTop: '12px' } },
+            h(
+              'label',
+              { className: 'ferry-field' },
+              h('span', null, t('token')),
+              h('input', {
+                className: 'ferry-input',
+                style: { minWidth: '320px' },
+                type: 'password',
+                value: token,
+                placeholder: tokenSet ? t('tokenKeep') : t('tokenNeeded'),
+                onChange: (event) => setToken(event.target.value),
+              }),
+            ),
+            h('div', { className: 'ferry-meta', style: { marginTop: '4px' } }, t('tokenHint')),
+          ),
           statusError ? h('div', { className: 'ferry-meta', style: { marginTop: '6px' } }, statusError) : null,
           settings.editable === false ? h('div', { className: 'ferry-notice error' }, t('settingsUnavailable')) : null,
           draftPeers.length === 0
@@ -657,18 +683,6 @@ window.__ModuleLoader__.load({
                         value: peer.url,
                         placeholder: 'http://100.64.0.3:3080',
                         onChange: (event) => updatePeer(index, { url: event.target.value }),
-                      }),
-                    ),
-                    h(
-                      'label',
-                      { className: 'ferry-field', style: { flex: '1 1 200px' } },
-                      h('span', null, t('token')),
-                      h('input', {
-                        className: 'ferry-input wide',
-                        type: 'password',
-                        value: peer.token,
-                        placeholder: peer.tokenSet ? t('tokenKeep') : t('tokenNeeded'),
-                        onChange: (event) => updatePeer(index, { token: event.target.value }),
                       }),
                     ),
                   ),
