@@ -72,32 +72,49 @@ function loadClientHalf() {
 test('the client half registers the sidebar panel, its page, the menu item and the toast host', () => {
   const { plugin, dictionaries, registrations } = loadClientHalf();
   assert.deepEqual(plugin.inject, ['slots', 'locale', 'layout']);
-  const bySlot = new Map(registrations.map(({ options, Component }) => [options.name, { options, Component }]));
+  const byKey = new Map(
+    registrations.map(({ options, Component }) => [
+      `${options.name}:${options.id ?? options.key}`,
+      { options, Component },
+    ]),
+  );
 
-  const panel = bySlot.get('sidebar.panellist');
+  const panel = byKey.get('sidebar.panellist:dsh-ferry');
   assert.ok(panel, 'sidebar.panellist must be registered');
   assert.equal(panel.options.id, 'dsh-ferry');
   assert.equal(panel.options.locale, 'dshFerry');
   assert.equal(panel.options.label(), 'dsh-ferry');
   assert.equal(typeof panel.Component, 'function');
 
-  const main = bySlot.get('main');
+  const main = byKey.get('main:dsh-ferry');
   assert.ok(main, 'main must be registered');
   assert.equal(main.options.key, 'dsh-ferry', 'the main panel key must match the panel id');
   assert.equal(typeof main.Component, 'function');
 
-  const menu = bySlot.get('sidebar.workspaces.session.menu.item');
+  const menu = byKey.get('sidebar.workspaces.session.menu.item:dsh-ferry-push');
   assert.ok(menu, 'the session menu item must be registered');
   assert.equal(menu.options.id, 'dsh-ferry-push');
   assert.equal(menu.options.order, 500);
   assert.equal(typeof menu.options.inject, 'function');
   assert.equal(typeof menu.options.inject().openPanel, 'function');
 
-  const overlay = bySlot.get('shell.overlay');
-  assert.ok(overlay, 'the toast host must be registered');
-  assert.equal(overlay.options.id, 'dsh-ferry-toast');
+  const toast = byKey.get('shell.overlay:dsh-ferry-toast');
+  assert.ok(toast, 'the toast host must be registered');
 
-  assert.equal(bySlot.has('settings.section'), false, 'the settings section was replaced by the sidebar panel');
+  const dialog = byKey.get('shell.overlay:dsh-ferry-push-dialog');
+  assert.ok(dialog, 'the push dialog must be registered in the overlay');
+  assert.equal(dialog.options.order, 90);
+  assert.equal(typeof dialog.Component, 'function');
+  assert.equal(
+    registrations.filter(({ options }) => options.name === 'shell.overlay').length,
+    2,
+    'the overlay hosts both the push dialog and the toast',
+  );
+  assert.equal(
+    registrations.some(({ options }) => options.name === 'settings.section'),
+    false,
+    'the settings section was replaced by the sidebar panel',
+  );
 
   const dicts = dictionaries.get('dshFerry');
   assert.ok(dicts.en && dicts.zh);

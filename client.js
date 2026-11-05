@@ -54,12 +54,21 @@ window.__ModuleLoader__.load({
 .ferry-menu-item{display:flex;align-items:center;gap:8px;width:100%;padding:4px 7px;background:transparent;border:none;border-radius:var(--dsw-radius-md);color:inherit;font:inherit;font-size:calc(var(--dsh-content-font-size-secondary,13px) - 1px);line-height:20px;text-align:left;cursor:pointer;box-sizing:border-box}
 .ferry-menu-item:hover:not(:disabled){background:var(--dsw-alias-bg-layer-2)}
 .ferry-menu-item:disabled{opacity:.45;cursor:default}
-.ferry-flyout{position:fixed;z-index:80;min-width:170px;max-height:280px;overflow:auto;padding:5px;border:.5px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-overlay);box-shadow:0 10px 28px rgba(0,0,0,.28)}
-.ferry-flyout-head{padding:5px 9px 4px;font-size:11px;color:var(--dsw-alias-label-secondary)}
-.ferry-flyout-row{display:flex;align-items:center;gap:8px;width:100%;padding:6px 9px;border:none;border-radius:6px;background:transparent;color:inherit;font:inherit;font-size:13px;line-height:19px;text-align:left;cursor:pointer}
-.ferry-flyout-row:hover:not(:disabled){background:var(--dsw-alias-bg-layer-2)}
-.ferry-flyout-row:disabled{opacity:.5;cursor:default}
-.ferry-flyout-foot{border-top:.5px solid var(--dsw-alias-border-l1);margin-top:4px;padding:7px 9px 3px;display:flex;flex-direction:column;gap:6px}
+.ferry-modal-backdrop{position:fixed;inset:0;z-index:85;pointer-events:auto;background:rgba(0,0,0,.45)}
+.ferry-modal{position:fixed;z-index:86;left:50%;top:50%;transform:translate(-50%,-50%);width:min(460px,calc(100vw - 32px));max-height:calc(100vh - 32px);overflow:auto;box-sizing:border-box;padding:18px;border:.5px solid var(--dsw-alias-border-l2);border-radius:12px;background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);box-shadow:0 18px 48px rgba(0,0,0,.4);display:flex;flex-direction:column;gap:10px;outline:none;pointer-events:auto}
+.ferry-modal-head{display:flex;flex-direction:column;gap:3px}
+.ferry-modal-title{font-size:15px;font-weight:600;line-height:22px}
+.ferry-modal-session{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ferry-modal-hint{font-size:11px;line-height:17px;color:var(--dsw-alias-label-secondary)}
+.ferry-modal-toolbar{display:flex;align-items:flex-start;gap:10px}
+.ferry-modal-toolbar .ferry-modal-hint{flex:1 1 auto}
+.ferry-choice-list{display:flex;flex-direction:column;gap:2px;max-height:240px;overflow:auto;margin:2px 0}
+.ferry-choice{display:flex;align-items:center;gap:8px;padding:8px 10px;border:.5px solid transparent;border-radius:7px;font-size:13px;line-height:19px;cursor:pointer}
+.ferry-choice:hover{background:var(--dsw-alias-bg-layer-2)}
+.ferry-choice.selected{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}
+.ferry-choice-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ferry-modal-error{font-size:11px;line-height:16px;color:var(--dsw-alias-state-error-primary)}
+.ferry-modal-foot{display:flex;align-items:center;gap:8px;border-top:.5px solid var(--dsw-alias-border-l1);padding-top:12px;margin-top:2px}
 .ferry-check{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dsw-alias-label-secondary);cursor:pointer}
 .ferry-toasts{position:fixed;right:20px;bottom:20px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:380px;pointer-events:none}
 .ferry-toast{pointer-events:auto;border:.5px solid var(--dsw-alias-border-l2);border-left-width:3px;border-radius:8px;background:var(--dsw-alias-bg-overlay);padding:10px 12px;font-size:12px;line-height:18px;box-shadow:0 8px 24px rgba(0,0,0,.24)}
@@ -68,6 +77,23 @@ window.__ModuleLoader__.load({
 .ferry-toast.info{border-left-color:var(--dsw-alias-brand-primary)}
 .ferry-toast-title{font-weight:600;margin-bottom:2px}
 `;
+
+    /**
+     * Install the plugin stylesheet once for every slot surface. The sidebar
+     * panel, the Session menu flyout and the toasts live in different render
+     * trees, so a component-local <style> would leave the menu unstyled.
+     * @returns {() => void} disposer removing this generation's tag.
+     */
+    function installStyles() {
+      if (typeof document === 'undefined') return () => {};
+      const tag = document.createElement('style');
+      tag.setAttribute('data-dsh-ferry', String(Date.now()) + Math.random().toString(36).slice(2));
+      tag.textContent = CSS;
+      document.head.appendChild(tag);
+      return () => {
+        tag.remove();
+      };
+    }
 
     const en = {
       title: 'dsh-ferry',
@@ -113,6 +139,12 @@ window.__ModuleLoader__.load({
       push: 'Push',
       pushing: 'Pushing…',
       pushTo: 'Push to…',
+      pushDialogTitle: 'Push to another instance',
+      pushDialogHint:
+        'Choose a target. When that instance has no local directory for this workspace, the files land in its incoming directory.',
+      pushDialogChecking: 'Checking instances…',
+      cancel: 'Cancel',
+      confirmPush: 'Push',
       noOnlinePeer: 'No peer is connected right now',
       managePeers: 'Manage peers…',
       mergeInMenu: 'Merge into an existing directory (backs up)',
@@ -207,6 +239,11 @@ window.__ModuleLoader__.load({
       push: '推送',
       pushing: '推送中…',
       pushTo: '推送到…',
+      pushDialogTitle: '推送到其他实例',
+      pushDialogHint: '选择目标实例。对端没有该工作区的本机目录时，文件会落到对端的接收目录。',
+      pushDialogChecking: '正在检查实例状态…',
+      cancel: '取消',
+      confirmPush: '推送',
       noOnlinePeer: '当前没有已连接的对端',
       managePeers: '管理实例…',
       mergeInMenu: '合并已有目录（自动备份）',
@@ -572,13 +609,12 @@ window.__ModuleLoader__.load({
       };
 
       if (settings === null) {
-        return h('div', { className: 'ferry-root' }, h('style', null, CSS), h('div', { className: 'ferry-empty' }, t('checking')));
+        return h('div', { className: 'ferry-root' }, h('div', { className: 'ferry-empty' }, t('checking')));
       }
 
       return h(
         'div',
         { className: 'ferry-root' },
-        h('style', null, CSS),
         h(
           'div',
           null,
@@ -808,60 +844,131 @@ window.__ModuleLoader__.load({
       );
     }
 
-    /* ---------- Session "..." menu: push to a connected peer ---------- */
+    /** Module-scoped push dialog shared by the Session menu and the overlay. */
+    const pushDialog = (() => {
+      let state = null;
+      const listeners = new Set();
+      const emit = () => {
+        for (const listener of listeners) listener();
+      };
+      return {
+        open(next) {
+          state = next;
+          emit();
+        },
+        close() {
+          state = null;
+          emit();
+        },
+        subscribe(listener) {
+          listeners.add(listener);
+          return () => {
+            listeners.delete(listener);
+          };
+        },
+        snapshot() {
+          return state;
+        },
+      };
+    })();
+
+    /* ---------- Session "..." menu: open the push dialog ---------- */
 
     function PushMenuItem(props) {
       const { sessionId, displayTitle, useMenuOpenState, openPanel, t } = props;
       const [, setMenuOpen] = useMenuOpenState();
+      return h(
+        'button',
+        {
+          type: 'button',
+          role: 'menuitem',
+          className: 'ferry-menu-item',
+          onClick: () => {
+            setMenuOpen(false);
+            pushDialog.open({ sessionId, displayTitle, openPanel });
+          },
+        },
+        h(PeerIcon, { size: 15 }),
+        h('span', null, t('pushTo')),
+      );
+    }
+
+    /* ---------- push dialog: reachability is checked here, not in the menu ---------- */
+
+    function PushDialogHost(props) {
+      const t = props.t;
+      const [state, setState] = useState(pushDialog.snapshot());
       const [peers, setPeers] = useState(null);
-      const [open, setOpen] = useState(false);
-      const [busyPeer, setBusyPeer] = useState(null);
+      const [statusError, setStatusError] = useState(null);
+      const [checking, setChecking] = useState(false);
+      const [selected, setSelected] = useState('');
       const [merge, setMerge] = useState(true);
-      const [anchor, setAnchor] = useState(null);
-      const buttonRef = React.useRef(null);
+      const [busy, setBusy] = useState(false);
+      const [error, setError] = useState(null);
+      const dialogRef = React.useRef(null);
+
+      const refreshPeers = useCallback(async () => {
+        setChecking(true);
+        setStatusError(null);
+        try {
+          const payload = await rpc({ action: 'status' });
+          const rows = Array.isArray(payload.peers) ? payload.peers : [];
+          setPeers(rows);
+          setSelected((current) => {
+            if (rows.some((row) => row.id === current && row.online === true)) return current;
+            return rows.find((row) => row.online === true)?.id ?? '';
+          });
+        } catch (failure) {
+          setPeers([]);
+          setStatusError(layoutError(failure, t));
+        } finally {
+          setChecking(false);
+        }
+      }, [t]);
+
+      useEffect(
+        () =>
+          pushDialog.subscribe(() => {
+            const next = pushDialog.snapshot();
+            setState(next);
+            setBusy(false);
+            setError(null);
+            setMerge(true);
+            setPeers(null);
+            setStatusError(null);
+            setSelected('');
+            if (next !== null) refreshPeers();
+          }),
+        [refreshPeers],
+      );
 
       useEffect(() => {
-        let alive = true;
-        rpc({ action: 'status' })
-          .then((payload) => {
-            if (alive) setPeers(payload.peers ?? []);
-          })
-          .catch(() => {
-            if (alive) setPeers([]);
-          });
-        return () => {
-          alive = false;
+        if (state === null) return;
+        dialogRef.current?.focus();
+        const onKey = (event) => {
+          if (event.key === 'Escape' && !busy) pushDialog.close();
         };
-      }, []);
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [state, busy]);
 
+      if (state === null) return null;
       const online = (peers ?? []).filter((peer) => peer.online === true);
-      const loading = peers === null;
-      const disabled = loading || online.length === 0 || busyPeer !== null;
+      const peer = online.find((candidate) => candidate.id === selected);
+      const listPending = peers === null;
 
-      const openFlyout = () => {
-        if (disabled) return;
-        const rect = buttonRef.current?.getBoundingClientRect();
-        if (rect !== undefined) {
-          const height = 250;
-          setAnchor({
-            left: Math.min(rect.right + 4, window.innerWidth - 230),
-            top: Math.max(8, Math.min(rect.top - 4, window.innerHeight - height)),
-          });
-        }
-        setOpen(true);
-      };
-
-      const pushTo = async (peer) => {
-        setOpen(false);
-        setBusyPeer(peer.id);
+      const submit = async () => {
+        if (peer === undefined) return;
+        setBusy(true);
+        setError(null);
         toasts.push({
           tone: 'info',
           title: t('pushing'),
-          text: `${displayTitle || sessionId} → ${peer.name || peer.id}`,
+          text: `${state.displayTitle || state.sessionId} → ${peer.name || peer.id}`,
           durationMs: 0,
         });
         try {
-          const result = await rpc({ action: 'push', peerId: peer.id, sessionId, merge });
+          const result = await rpc({ action: 'push', peerId: peer.id, sessionId: state.sessionId, merge });
           const summary = noticeFor(result, t);
           const warnings = (result.warnings ?? []).map((warning) => codeText(warning.code ?? warning, t));
           toasts.push({
@@ -869,94 +976,151 @@ window.__ModuleLoader__.load({
             title: `${t('success')} · ${peer.name || peer.id}`,
             text: `${summary.text}${warnings.length ? `\n${warnings.join('\n')}` : ''}`,
           });
-          setMenuOpen(false);
-        } catch (error) {
+          pushDialog.close();
+        } catch (failure) {
+          setError(layoutError(failure, t));
           toasts.push({
             tone: 'error',
             title: `${t('failed')} · ${peer.name || peer.id}`,
-            text: layoutError(error, t),
+            text: layoutError(failure, t),
           });
         } finally {
-          setBusyPeer(null);
+          setBusy(false);
         }
       };
 
-      return h(
-        'div',
-        { style: { position: 'relative' }, onPointerLeave: () => setOpen(false) },
-        h(
-          'button',
-          {
-            ref: buttonRef,
-            type: 'button',
-            role: 'menuitem',
-            className: 'ferry-menu-item',
-            disabled,
-            'aria-haspopup': online.length > 0 ? 'menu' : undefined,
-            'aria-expanded': open,
-            title: loading ? t('checking') : online.length === 0 ? t('noOnlinePeer') : undefined,
-            onMouseEnter: openFlyout,
-            onClick: () => (open ? setOpen(false) : openFlyout()),
-          },
-          h(PeerIcon, { size: 15 }),
-          h('span', null, loading ? t('checking') : online.length === 0 ? t('noOnlinePeer') : t('pushTo')),
-          online.length > 0 ? h('span', { className: 'ferry-spacer' }) : null,
-          online.length > 0 ? h('span', { style: { opacity: 0.6 } }, '▸') : null,
-        ),
-        open && anchor !== null
-          ? h(
-              'div',
-              { className: 'ferry-flyout', role: 'menu', style: { left: `${anchor.left}px`, top: `${anchor.top}px` } },
-              h('div', { className: 'ferry-flyout-head' }, t('pushTo')),
-              online.map((peer) =>
-                h(
-                  'button',
-                  {
-                    key: peer.id,
-                    type: 'button',
-                    role: 'menuitem',
-                    className: 'ferry-flyout-row',
-                    disabled: busyPeer !== null,
-                    onClick: () => pushTo(peer),
-                  },
-                  h('span', { className: 'ferry-dot on' }),
-                  h('span', null, peer.name || peer.id),
-                  h('span', { className: 'ferry-spacer' }),
-                  typeof peer.latencyMs === 'number'
-                    ? h('span', { className: 'ferry-meta' }, `${peer.latencyMs}${t('latency')}`)
-                    : null,
-                ),
-              ),
+      let body;
+      if (listPending) {
+        body = h('div', { className: 'ferry-modal-hint' }, t('pushDialogChecking'));
+      } else if (statusError !== null) {
+        body = h('div', { className: 'ferry-modal-error' }, statusError);
+      } else if (peers.length === 0) {
+        body = h('div', { className: 'ferry-modal-hint' }, t('noPeers'));
+      } else {
+        body = h(
+          React.Fragment,
+          null,
+          online.length === 0 ? h('div', { className: 'ferry-modal-hint' }, t('noOnlinePeer')) : null,
+          h(
+            'div',
+            { className: 'ferry-choice-list', role: 'radiogroup' },
+            peers.map((candidate) =>
               h(
-                'div',
-                { className: 'ferry-flyout-foot' },
+                'label',
+                {
+                  key: candidate.id,
+                  className: `ferry-choice ${selected === candidate.id ? 'selected' : ''}`,
+                },
+                h('input', {
+                  type: 'radio',
+                  name: 'dsh-ferry-peer',
+                  value: candidate.id,
+                  checked: selected === candidate.id,
+                  disabled: busy || candidate.online !== true,
+                  onChange: () => setSelected(candidate.id),
+                }),
+                h('span', { className: `ferry-dot ${candidate.online === true ? 'on' : 'off'}` }),
                 h(
-                  'label',
-                  { className: 'ferry-check' },
-                  h('input', {
-                    type: 'checkbox',
-                    checked: merge,
-                    onChange: (event) => setMerge(event.target.checked),
-                  }),
-                  h('span', null, t('mergeInMenu')),
+                  'span',
+                  { className: 'ferry-choice-name', title: candidate.name || candidate.id },
+                  candidate.name || candidate.id,
                 ),
-                h(
-                  'button',
-                  {
-                    type: 'button',
-                    className: 'ferry-menu-item',
-                    style: { fontSize: '11px', padding: '2px 0', opacity: 0.75 },
-                    onClick: () => {
-                      setOpen(false);
-                      setMenuOpen(false);
-                      openPanel?.();
-                    },
-                  },
-                  t('managePeers'),
-                ),
+                h('span', { className: 'ferry-spacer' }),
+                candidate.online === true && typeof candidate.latencyMs === 'number'
+                  ? h('span', { className: 'ferry-meta' }, `${candidate.latencyMs}${t('latency')}`)
+                  : h('span', { className: 'ferry-meta' }, t('offline')),
               ),
-            )
-          : null,
+            ),
+          ),
+        );
+      }
+
+      return h(
+        React.Fragment,
+        null,
+        h('div', {
+          className: 'ferry-modal-backdrop',
+          onMouseDown: () => {
+            if (!busy) pushDialog.close();
+          },
+        }),
+        h(
+          'div',
+          {
+            className: 'ferry-modal',
+            role: 'dialog',
+            'aria-modal': 'true',
+            'aria-labelledby': 'dsh-ferry-push-title',
+            tabIndex: -1,
+            ref: dialogRef,
+          },
+          h(
+            'div',
+            { className: 'ferry-modal-head' },
+            h('div', { className: 'ferry-modal-title', id: 'dsh-ferry-push-title' }, t('pushDialogTitle')),
+            h(
+              'div',
+              { className: 'ferry-modal-session', title: state.displayTitle || state.sessionId },
+              state.displayTitle || state.sessionId,
+            ),
+          ),
+          h(
+            'div',
+            { className: 'ferry-modal-toolbar' },
+            h('span', { className: 'ferry-modal-hint' }, t('pushDialogHint')),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ferry-btn',
+                disabled: checking || busy,
+                onClick: refreshPeers,
+              },
+              checking ? t('checking') : t('refresh'),
+            ),
+          ),
+          body,
+          h(
+            'label',
+            { className: 'ferry-check' },
+            h('input', {
+              type: 'checkbox',
+              checked: merge,
+              disabled: busy,
+              onChange: (event) => setMerge(event.target.checked),
+            }),
+            h('span', null, t('mergeInMenu')),
+          ),
+          error !== null ? h('div', { className: 'ferry-modal-error' }, error) : null,
+          h(
+            'div',
+            { className: 'ferry-modal-foot' },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ferry-menu-item',
+                style: { width: 'auto', fontSize: '11px', padding: '2px 0', opacity: 0.75 },
+                onClick: () => {
+                  pushDialog.close();
+                  state.openPanel?.();
+                },
+              },
+              t('managePeers'),
+            ),
+            h('span', { className: 'ferry-spacer' }),
+            h(
+              'button',
+              { type: 'button', className: 'ferry-btn', disabled: busy, onClick: () => pushDialog.close() },
+              t('cancel'),
+            ),
+            h(
+              'button',
+              { type: 'button', className: 'ferry-btn primary', disabled: busy || peer === undefined, onClick: submit },
+              busy ? t('pushing') : t('confirmPush'),
+            ),
+          ),
+        ),
       );
     }
 
@@ -996,6 +1160,7 @@ window.__ModuleLoader__.load({
 
     function apply(ctx) {
       const ns = 'dshFerry';
+      ctx.effect(() => installStyles());
       ctx.effect(() => ctx.locale.register(ns, { en, zh }));
       const t = ctx.locale.bind(ns);
       ctx.slots.inject('sidebar.panellist', () =>
@@ -1024,6 +1189,9 @@ window.__ModuleLoader__.load({
           },
           PushMenuItem,
         ),
+      );
+      ctx.slots.inject('shell.overlay', () =>
+        ctx.slots.register({ name: 'shell.overlay', id: 'dsh-ferry-push-dialog', order: 90, locale: ns }, PushDialogHost),
       );
       ctx.slots.inject('shell.overlay', () =>
         ctx.slots.register({ name: 'shell.overlay', id: 'dsh-ferry-toast', order: 100, locale: ns }, ToastHost),
