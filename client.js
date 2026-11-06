@@ -63,9 +63,16 @@ window.__ModuleLoader__.load({
 .ferry-modal-toolbar{display:flex;align-items:flex-start;gap:10px}
 .ferry-modal-toolbar .ferry-modal-hint{flex:1 1 auto}
 .ferry-choice-list{display:flex;flex-direction:column;gap:2px;max-height:240px;overflow:auto;margin:2px 0}
-.ferry-choice{display:flex;align-items:center;gap:8px;padding:8px 10px;border:.5px solid transparent;border-radius:7px;font-size:13px;line-height:19px;cursor:pointer}
+.ferry-choice{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:.5px solid transparent;border-radius:7px;font-size:13px;line-height:19px;cursor:pointer}
 .ferry-choice:hover{background:var(--dsw-alias-bg-layer-2)}
 .ferry-choice.selected{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}
+.ferry-choice-body{flex:1 1 auto;min-width:0}
+.ferry-choice-row{display:flex;align-items:baseline;gap:8px;min-width:0}
+.ferry-state{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);margin-top:2px;white-space:normal}
+.ferry-mode{display:flex;flex-direction:column;gap:6px;border-top:.5px solid var(--dsw-alias-border-l1);padding-top:10px}
+.ferry-mode-label{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:18px;cursor:pointer}
+.ferry-mode-label.disabled{opacity:.45;cursor:default}
+.ferry-mode-text{display:flex;flex-direction:column;min-width:0}
 .ferry-choice-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ferry-modal-error{font-size:11px;line-height:16px;color:var(--dsw-alias-state-error-primary)}
 .ferry-modal-foot{display:flex;align-items:center;gap:8px;border-top:.5px solid var(--dsw-alias-border-l1);padding-top:12px;margin-top:2px}
@@ -148,6 +155,36 @@ window.__ModuleLoader__.load({
       noOnlinePeer: 'No peer is connected right now',
       managePeers: 'Manage peers…',
       mergeInMenu: 'Merge into an existing directory (backs up)',
+      modeTitle: 'How to send it',
+      modeNew: 'New session',
+      modeNewHint: 'Create a separate copy there; the peer keeps whatever it already has.',
+      modeUpdate: 'Append update',
+      modeUpdateHint: 'Keep one session: add the events the peer is missing and merge the workspace.',
+      modeUpdateUnavailable: 'Not possible for this peer',
+      state_absent: 'No copy there yet; it will be created',
+      state_behind: 'The peer has {have} events; {add} will be appended',
+      state_same: 'The peer has {have} events and matches; only workspace files are synced',
+      state_ahead: 'The peer has {have} events, more than here; only a new copy is possible',
+      state_diverged: 'The peer copy has diverged; only a new copy is possible',
+      state_active: 'The peer has this session open; only a new copy is possible',
+      state_unknown: 'Cannot tell what the peer has (offline or older plugin)',
+      local_absent: 'No local copy yet; it will be created',
+      local_behind: 'This instance has {have} events; {add} will be appended',
+      local_same: 'This instance has {have} events and matches; only workspace files are synced',
+      local_ahead: 'This instance has {have} events, more than the peer; only a new copy is possible',
+      local_diverged: 'The local copy has diverged; only a new copy is possible',
+      local_active: 'This session is open here; only a new copy is possible',
+      local_unknown: 'Cannot tell what this instance has',
+      pullDialogTitle: 'Pull from another instance',
+      pullDialogChecking: 'Checking the local copy…',
+      pullDialogHint: 'Choose how the local copy should be treated.',
+      confirmPull: 'Pull',
+      appended: 'events appended',
+      code_session_ahead: 'The peer has a longer copy of this session; send it as a new session.',
+      code_session_diverged: 'The peer has a different copy of this session; send it as a new session.',
+      code_session_active: 'The session is open there; close it or stop its turn before updating it.',
+      code_session_unreadable: 'The stored session log could not be read, so the peer copy cannot be compared.',
+      code_sessionForked: 'The two copies had diverged, so the push created a separate session on the peer.',
       files: 'files',
       overwritten: 'overwritten',
       skippedTitle: 'Left behind',
@@ -247,6 +284,36 @@ window.__ModuleLoader__.load({
       noOnlinePeer: '当前没有已连接的对端',
       managePeers: '管理实例…',
       mergeInMenu: '合并已有目录（自动备份）',
+      modeTitle: '推送方式',
+      modeNew: '新建会话',
+      modeNewHint: '在对方创建一份独立副本，对方已有的内容不动。',
+      modeUpdate: '追加更新',
+      modeUpdateHint: '沿用同一个会话：补上对方缺少的事件，并合并工作区。',
+      modeUpdateUnavailable: '当前对端不可用',
+      state_absent: '对方没有此会话，将新建',
+      state_behind: '对方已有 {have} 条，本次追加 {add} 条',
+      state_same: '对方已有 {have} 条且内容一致，只同步工作区文件',
+      state_ahead: '对方已有 {have} 条，比本地多，只能新建副本',
+      state_diverged: '对方内容与本地不同，只能新建副本',
+      state_active: '对方已打开该会话，只能新建副本',
+      state_unknown: '无法判断对方状态（离线或旧版插件）',
+      local_absent: '本地没有此会话，将新建',
+      local_behind: '本地已有 {have} 条，本次追加 {add} 条',
+      local_same: '本地已有 {have} 条且内容一致，只同步工作区文件',
+      local_ahead: '本地已有 {have} 条，比远端多，只能新建副本',
+      local_diverged: '本地内容与远端不同，只能新建副本',
+      local_active: '本地已打开该会话，只能新建副本',
+      local_unknown: '无法判断本地状态',
+      pullDialogTitle: '从其他实例拉取',
+      pullDialogChecking: '正在检查本地副本…',
+      pullDialogHint: '选择本次拉取如何处理本地已有副本。',
+      confirmPull: '拉取',
+      appended: '条事件已追加',
+      code_session_ahead: '对方有比本地更长的副本，请改为新建会话推送。',
+      code_session_diverged: '对方已有内容不同的同名会话，请改为新建会话推送。',
+      code_session_active: '该会话在对端/本地处于打开状态，请先关闭或停止后再更新。',
+      code_session_unreadable: '会话日志无法读取，无法比较对方副本。',
+      code_sessionForked: '两边内容已分叉，已在对方新建独立会话。',
       files: '文件',
       overwritten: '覆盖',
       skippedTitle: '未传输',
@@ -378,6 +445,9 @@ window.__ModuleLoader__.load({
 
     function transferSummary(result, t) {
       const pieces = [];
+      if (result?.status === 'updated' && typeof result.appended === 'number') {
+        pieces.push(`${result.appended} ${t('appended')}`);
+      }
       if (result?.targetDir) pieces.push(`${t('resultTarget')}: ${result.targetDir}`);
       if (result?.workspace) {
         const parts = [
@@ -466,9 +536,6 @@ window.__ModuleLoader__.load({
       const [notice, setNotice] = useState(null);
       const [pullPeer, setPullPeer] = useState('');
       const [remote, setRemote] = useState({ peer: null, loading: false, sessions: [], error: null });
-      const [pullTarget, setPullTarget] = useState('');
-      const [pullMerge, setPullMerge] = useState(false);
-      const [pullBusy, setPullBusy] = useState(null);
 
       const applySettings = useCallback((next) => {
         setSettings(next);
@@ -586,26 +653,12 @@ window.__ModuleLoader__.load({
         }
       };
 
-      const pull = async (session) => {
-        setPullBusy(session.sessionId);
-        try {
-          const payload = await rpc({
-            action: 'pull',
-            peerId: pullPeer,
-            sessionId: session.sessionId,
-            ...(pullTarget.trim() === '' ? {} : { targetDir: pullTarget.trim() }),
-            merge: pullMerge,
-          });
-          const summary = noticeFor(payload, t);
-          setNotice({ tone: 'success', text: summary.text, warnings: payload.warnings });
-          toasts.push({ tone: 'success', title: `${t('success')} · ${t('pull')}`, text: summary.text });
-        } catch (error) {
-          const text = `${t('failed')}: ${layoutError(error, t)}`;
-          setNotice({ tone: 'error', text });
-          toasts.push({ tone: 'error', title: t('failed'), text: layoutError(error, t) });
-        } finally {
-          setPullBusy(null);
-        }
+      const openPull = (session) => {
+        pullDialog.open({
+          peerId: pullPeer,
+          sessionId: session.sessionId,
+          title: session.title ?? '',
+        });
       };
 
       if (settings === null) {
@@ -781,23 +834,6 @@ window.__ModuleLoader__.load({
               { className: 'ferry-btn', type: 'button', onClick: loadRemote, disabled: pullPeer === '' || remote.loading },
               remote.loading ? t('checking') : t('loadRemote'),
             ),
-            h(
-              'label',
-              { className: 'ferry-field', style: { flex: '1 1 220px' } },
-              h('span', null, t('targetDir')),
-              h('input', {
-                className: 'ferry-input wide',
-                value: pullTarget,
-                placeholder: t('targetDirHint'),
-                onChange: (event) => setPullTarget(event.target.value),
-              }),
-            ),
-            h(
-              'label',
-              { className: 'ferry-check' },
-              h('input', { type: 'checkbox', checked: pullMerge, onChange: (event) => setPullMerge(event.target.checked) }),
-              h('span', null, t('merge')),
-            ),
           ),
           remote.error ? h('div', { className: 'ferry-notice error' }, remote.error) : null,
           remote.loading
@@ -832,10 +868,10 @@ window.__ModuleLoader__.load({
                         {
                           className: 'ferry-btn primary',
                           type: 'button',
-                          disabled: pullBusy !== null,
-                          onClick: () => pull(session),
+                          disabled: pullPeer === '',
+                          onClick: () => openPull(session),
                         },
-                        pullBusy === session.sessionId ? t('pulling') : t('pull'),
+                        t('pull'),
                       ),
                     ),
                   ),
@@ -893,33 +929,82 @@ window.__ModuleLoader__.load({
       );
     }
 
+    /* ---------- transfer planning: peer state shown before anything moves ---------- */
+
+    /**
+     * Substitute `{name}` placeholders in one locale string.
+     * @param {string} template - locale template.
+     * @param {Record<string, string|number>} values - replacements.
+     * @returns {string} text.
+     */
+    function fill(template, values) {
+      return String(template).replace(/\{(\w+)\}/g, (match, key) =>
+        values[key] === undefined ? match : String(values[key]),
+      );
+    }
+
+    /**
+     * Whether the receiving side can append to its own copy in place.
+     * @param {object | undefined} row - peer or local plan row.
+     * @returns {boolean} true when an append update is possible.
+     */
+    function appendAvailable(row) {
+      if (row === undefined || row === null) return false;
+      if (row.active === true) return false;
+      return row.state === 'behind' || row.state === 'same';
+    }
+
+    /**
+     * Render one state line for a peer row (`state_*`) or a local plan row
+     * (`local_*`).
+     * @param {'state'|'local'} side - whose copy the row describes.
+     * @param {object} row - plan row.
+     * @param {number | undefined} total - event count on the sending side.
+     * @param {(key: string) => string} t - translator.
+     * @returns {string} localized line.
+     */
+    function stateLine(side, row, total, t) {
+      const have = typeof row?.eventCount === 'number' ? row.eventCount : 0;
+      const add = typeof total === 'number' ? Math.max(0, total - have) : 0;
+      const key = row?.active === true ? `${side}_active` : `${side}_${row?.state ?? 'unknown'}`;
+      const template = t(key);
+      if (template === key) return t(`${side}_unknown`);
+      return fill(template, { have, add });
+    }
+
     /* ---------- push dialog: reachability is checked here, not in the menu ---------- */
 
     function PushDialogHost(props) {
       const t = props.t;
       const [state, setState] = useState(pushDialog.snapshot());
       const [peers, setPeers] = useState(null);
+      const [plan, setPlan] = useState(null);
       const [statusError, setStatusError] = useState(null);
       const [checking, setChecking] = useState(false);
       const [selected, setSelected] = useState('');
+      const [mode, setMode] = useState('new');
       const [merge, setMerge] = useState(true);
       const [busy, setBusy] = useState(false);
       const [error, setError] = useState(null);
       const dialogRef = React.useRef(null);
 
       const refreshPeers = useCallback(async () => {
+        const current = pushDialog.snapshot();
+        if (current === null) return;
         setChecking(true);
         setStatusError(null);
         try {
-          const payload = await rpc({ action: 'status' });
+          const payload = await rpc({ action: 'pushPlan', sessionId: current.sessionId });
           const rows = Array.isArray(payload.peers) ? payload.peers : [];
+          setPlan(payload.session ?? null);
           setPeers(rows);
-          setSelected((current) => {
-            if (rows.some((row) => row.id === current && row.online === true)) return current;
+          setSelected((currentId) => {
+            if (rows.some((row) => row.id === currentId && row.online === true)) return currentId;
             return rows.find((row) => row.online === true)?.id ?? '';
           });
         } catch (failure) {
           setPeers([]);
+          setPlan(null);
           setStatusError(layoutError(failure, t));
         } finally {
           setChecking(false);
@@ -935,12 +1020,23 @@ window.__ModuleLoader__.load({
             setError(null);
             setMerge(true);
             setPeers(null);
+            setPlan(null);
+            setMode('new');
             setStatusError(null);
             setSelected('');
             if (next !== null) refreshPeers();
           }),
         [refreshPeers],
       );
+
+      const selectedPeer = (peers ?? []).find((row) => row.id === selected && row.online === true);
+      const canAppend = appendAvailable(selectedPeer);
+
+      // Default to whatever the peer state allows; the operator can override
+      // until the selected peer or the peer list changes.
+      useEffect(() => {
+        setMode(canAppend ? 'update' : 'new');
+      }, [selected, peers]);
 
       useEffect(() => {
         if (state === null) return;
@@ -953,8 +1049,9 @@ window.__ModuleLoader__.load({
       }, [state, busy]);
 
       if (state === null) return null;
-      const online = (peers ?? []).filter((peer) => peer.online === true);
-      const peer = online.find((candidate) => candidate.id === selected);
+      const online = (peers ?? []).filter((row) => row.online === true);
+      const peer = selectedPeer;
+      const total = plan !== null && typeof plan.eventCount === 'number' ? plan.eventCount : undefined;
       const listPending = peers === null;
 
       const submit = async () => {
@@ -968,7 +1065,7 @@ window.__ModuleLoader__.load({
           durationMs: 0,
         });
         try {
-          const result = await rpc({ action: 'push', peerId: peer.id, sessionId: state.sessionId, merge });
+          const result = await rpc({ action: 'push', peerId: peer.id, sessionId: state.sessionId, mode, merge });
           const summary = noticeFor(result, t);
           const warnings = (result.warnings ?? []).map((warning) => codeText(warning.code ?? warning, t));
           toasts.push({
@@ -988,6 +1085,26 @@ window.__ModuleLoader__.load({
           setBusy(false);
         }
       };
+
+      const modeOption = (value, label, hint, enabled) =>
+        h(
+          'label',
+          { key: value, className: `ferry-mode-label ${enabled ? '' : 'disabled'}` },
+          h('input', {
+            type: 'radio',
+            name: 'dsh-ferry-push-mode',
+            value,
+            checked: mode === value,
+            disabled: busy || !enabled,
+            onChange: () => setMode(value),
+          }),
+          h(
+            'span',
+            { className: 'ferry-mode-text' },
+            h('span', null, label),
+            h('span', { className: 'ferry-modal-hint' }, hint),
+          ),
+        );
 
       let body;
       if (listPending) {
@@ -1021,14 +1138,25 @@ window.__ModuleLoader__.load({
                 }),
                 h('span', { className: `ferry-dot ${candidate.online === true ? 'on' : 'off'}` }),
                 h(
-                  'span',
-                  { className: 'ferry-choice-name', title: candidate.name || candidate.id },
-                  candidate.name || candidate.id,
+                  'div',
+                  { className: 'ferry-choice-body' },
+                  h(
+                    'div',
+                    { className: 'ferry-choice-row' },
+                    h(
+                      'span',
+                      { className: 'ferry-choice-name', title: candidate.name || candidate.id },
+                      candidate.name || candidate.id,
+                    ),
+                    h('span', { className: 'ferry-spacer' }),
+                    candidate.online === true && typeof candidate.latencyMs === 'number'
+                      ? h('span', { className: 'ferry-meta' }, `${candidate.latencyMs}${t('latency')}`)
+                      : h('span', { className: 'ferry-meta' }, t('offline')),
+                  ),
+                  candidate.online === true
+                    ? h('div', { className: 'ferry-state' }, stateLine('state', candidate, total, t))
+                    : null,
                 ),
-                h('span', { className: 'ferry-spacer' }),
-                candidate.online === true && typeof candidate.latencyMs === 'number'
-                  ? h('span', { className: 'ferry-meta' }, `${candidate.latencyMs}${t('latency')}`)
-                  : h('span', { className: 'ferry-meta' }, t('offline')),
               ),
             ),
           ),
@@ -1080,17 +1208,33 @@ window.__ModuleLoader__.load({
             ),
           ),
           body,
-          h(
-            'label',
-            { className: 'ferry-check' },
-            h('input', {
-              type: 'checkbox',
-              checked: merge,
-              disabled: busy,
-              onChange: (event) => setMerge(event.target.checked),
-            }),
-            h('span', null, t('mergeInMenu')),
-          ),
+          peer === undefined
+            ? null
+            : h(
+                'div',
+                { className: 'ferry-mode' },
+                h('div', { className: 'ferry-modal-hint' }, t('modeTitle')),
+                modeOption('new', t('modeNew'), t('modeNewHint'), true),
+                modeOption(
+                  'update',
+                  t('modeUpdate'),
+                  canAppend ? t('modeUpdateHint') : `${t('modeUpdateHint')} · ${t('modeUpdateUnavailable')}`,
+                  canAppend,
+                ),
+              ),
+          mode === 'new'
+            ? h(
+                'label',
+                { className: 'ferry-check' },
+                h('input', {
+                  type: 'checkbox',
+                  checked: merge,
+                  disabled: busy,
+                  onChange: (event) => setMerge(event.target.checked),
+                }),
+                h('span', null, t('mergeInMenu')),
+              )
+            : null,
           error !== null ? h('div', { className: 'ferry-modal-error' }, error) : null,
           h(
             'div',
@@ -1118,6 +1262,259 @@ window.__ModuleLoader__.load({
               'button',
               { type: 'button', className: 'ferry-btn primary', disabled: busy || peer === undefined, onClick: submit },
               busy ? t('pushing') : t('confirmPush'),
+            ),
+          ),
+        ),
+      );
+    }
+
+    /** Module-scoped pull dialog shared by the sidebar panel and the overlay. */
+    const pullDialog = (() => {
+      let state = null;
+      const listeners = new Set();
+      const emit = () => {
+        for (const listener of listeners) listener();
+      };
+      return {
+        open(next) {
+          state = next;
+          emit();
+        },
+        close() {
+          state = null;
+          emit();
+        },
+        subscribe(listener) {
+          listeners.add(listener);
+          return () => {
+            listeners.delete(listener);
+          };
+        },
+        snapshot() {
+          return state;
+        },
+      };
+    })();
+
+    /* ---------- pull dialog: inspect the local copy before downloading ---------- */
+
+    function PullDialogHost(props) {
+      const t = props.t;
+      const [state, setState] = useState(pullDialog.snapshot());
+      const [plan, setPlan] = useState(null);
+      const [checking, setChecking] = useState(false);
+      const [statusError, setStatusError] = useState(null);
+      const [mode, setMode] = useState('new');
+      const [targetDir, setTargetDir] = useState('');
+      const [merge, setMerge] = useState(false);
+      const [busy, setBusy] = useState(false);
+      const [error, setError] = useState(null);
+      const dialogRef = React.useRef(null);
+
+      const loadPlan = useCallback(async () => {
+        const current = pullDialog.snapshot();
+        if (current === null) return;
+        setChecking(true);
+        setStatusError(null);
+        try {
+          const payload = await rpc({ action: 'pullPlan', peerId: current.peerId, sessionId: current.sessionId });
+          setPlan(payload);
+        } catch (failure) {
+          setPlan(null);
+          setStatusError(layoutError(failure, t));
+        } finally {
+          setChecking(false);
+        }
+      }, [t]);
+
+      useEffect(
+        () =>
+          pullDialog.subscribe(() => {
+            const next = pullDialog.snapshot();
+            setState(next);
+            setPlan(null);
+            setChecking(false);
+            setError(null);
+            setMode('new');
+            setTargetDir('');
+            setMerge(false);
+            setStatusError(null);
+            if (next !== null) loadPlan();
+          }),
+        [loadPlan],
+      );
+
+      const canAppend = appendAvailable(plan);
+      useEffect(() => {
+        setMode(canAppend ? 'update' : 'new');
+      }, [plan]);
+
+      useEffect(() => {
+        if (state === null) return;
+        dialogRef.current?.focus();
+        const onKey = (event) => {
+          if (event.key === 'Escape' && !busy) pullDialog.close();
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+      }, [state, busy]);
+
+      if (state === null) return null;
+      const title = state.title || state.sessionId;
+
+      const submit = async () => {
+        setBusy(true);
+        setError(null);
+        toasts.push({ tone: 'info', title: t('pulling'), text: title, durationMs: 0 });
+        try {
+          const result = await rpc({
+            action: 'pull',
+            peerId: state.peerId,
+            sessionId: state.sessionId,
+            mode,
+            ...(targetDir.trim() === '' ? {} : { targetDir: targetDir.trim() }),
+            merge,
+          });
+          const summary = noticeFor(result, t);
+          const warnings = (result.warnings ?? []).map((warning) => codeText(warning.code ?? warning, t));
+          toasts.push({
+            tone: 'success',
+            title: `${t('success')} · ${t('pull')}`,
+            text: `${summary.text}${warnings.length ? `\n${warnings.join('\n')}` : ''}`,
+          });
+          pullDialog.close();
+        } catch (failure) {
+          setError(layoutError(failure, t));
+          toasts.push({ tone: 'error', title: `${t('failed')} · ${t('pull')}`, text: layoutError(failure, t) });
+        } finally {
+          setBusy(false);
+        }
+      };
+
+      const modeOption = (value, label, hint, enabled) =>
+        h(
+          'label',
+          { key: value, className: `ferry-mode-label ${enabled ? '' : 'disabled'}` },
+          h('input', {
+            type: 'radio',
+            name: 'dsh-ferry-pull-mode',
+            value,
+            checked: mode === value,
+            disabled: busy || !enabled,
+            onChange: () => setMode(value),
+          }),
+          h(
+            'span',
+            { className: 'ferry-mode-text' },
+            h('span', null, label),
+            h('span', { className: 'ferry-modal-hint' }, hint),
+          ),
+        );
+
+      const blocked = plan !== null && plan.ok === false;
+      let body;
+      if (plan === null) {
+        body =
+          statusError !== null
+            ? h('div', { className: 'ferry-modal-error' }, statusError)
+            : h('div', { className: 'ferry-modal-hint' }, t('pullDialogChecking'));
+      } else if (blocked) {
+        body = h(
+          'div',
+          { className: 'ferry-modal-error' },
+          plan.message ?? codeText(plan.code ?? 'preflight-failed', t),
+        );
+      } else {
+        body = h(
+          React.Fragment,
+          null,
+          h('div', { className: 'ferry-state' }, stateLine('local', plan, plan.session?.eventCount, t)),
+          h(
+            'div',
+            { className: 'ferry-mode' },
+            h('div', { className: 'ferry-modal-hint' }, t('modeTitle')),
+            modeOption('new', t('modeNew'), t('modeNewHint'), true),
+            modeOption(
+              'update',
+              t('modeUpdate'),
+              canAppend ? t('modeUpdateHint') : `${t('modeUpdateHint')} · ${t('modeUpdateUnavailable')}`,
+              canAppend,
+            ),
+          ),
+          h(
+            'label',
+            { className: 'ferry-mode-text', style: { gap: '4px' } },
+            h('span', { className: 'ferry-modal-hint' }, t('targetDir')),
+            h('input', {
+              className: 'ferry-input wide',
+              value: targetDir,
+              placeholder: t('targetDirHint'),
+              disabled: busy,
+              onChange: (event) => setTargetDir(event.target.value),
+            }),
+          ),
+          mode === 'new'
+            ? h(
+                'label',
+                { className: 'ferry-check' },
+                h('input', {
+                  type: 'checkbox',
+                  checked: merge,
+                  disabled: busy,
+                  onChange: (event) => setMerge(event.target.checked),
+                }),
+                h('span', null, t('mergeInMenu')),
+              )
+            : null,
+        );
+      }
+
+      return h(
+        React.Fragment,
+        null,
+        h('div', {
+          className: 'ferry-modal-backdrop',
+          onMouseDown: () => {
+            if (!busy) pullDialog.close();
+          },
+        }),
+        h(
+          'div',
+          {
+            className: 'ferry-modal',
+            role: 'dialog',
+            'aria-modal': 'true',
+            'aria-labelledby': 'dsh-ferry-pull-title',
+            tabIndex: -1,
+            ref: dialogRef,
+          },
+          h(
+            'div',
+            { className: 'ferry-modal-head' },
+            h('div', { className: 'ferry-modal-title', id: 'dsh-ferry-pull-title' }, t('pullDialogTitle')),
+            h('div', { className: 'ferry-modal-session', title }, title),
+          ),
+          h('div', { className: 'ferry-modal-hint' }, t('pullDialogHint')),
+          body,
+          error !== null ? h('div', { className: 'ferry-modal-error' }, error) : null,
+          h(
+            'div',
+            { className: 'ferry-modal-foot' },
+            h('span', { className: 'ferry-spacer' }),
+            h(
+              'button',
+              { type: 'button', className: 'ferry-btn', disabled: busy, onClick: () => pullDialog.close() },
+              t('cancel'),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'ferry-btn primary',
+                disabled: busy || plan === null || blocked || (mode === 'update' && !canAppend),
+                onClick: submit,
+              },
+              busy ? t('pulling') : t('confirmPull'),
             ),
           ),
         ),
@@ -1192,6 +1589,9 @@ window.__ModuleLoader__.load({
       );
       ctx.slots.inject('shell.overlay', () =>
         ctx.slots.register({ name: 'shell.overlay', id: 'dsh-ferry-push-dialog', order: 90, locale: ns }, PushDialogHost),
+      );
+      ctx.slots.inject('shell.overlay', () =>
+        ctx.slots.register({ name: 'shell.overlay', id: 'dsh-ferry-pull-dialog', order: 91, locale: ns }, PullDialogHost),
       );
       ctx.slots.inject('shell.overlay', () =>
         ctx.slots.register({ name: 'shell.overlay', id: 'dsh-ferry-toast', order: 100, locale: ns }, ToastHost),

@@ -105,10 +105,14 @@ test('the client half registers the sidebar panel, its page, the menu item and t
   assert.ok(dialog, 'the push dialog must be registered in the overlay');
   assert.equal(dialog.options.order, 90);
   assert.equal(typeof dialog.Component, 'function');
+  const pullDialog = byKey.get('shell.overlay:dsh-ferry-pull-dialog');
+  assert.ok(pullDialog, 'the pull dialog must be registered in the overlay');
+  assert.equal(pullDialog.options.order, 91);
+  assert.equal(typeof pullDialog.Component, 'function');
   assert.equal(
     registrations.filter(({ options }) => options.name === 'shell.overlay').length,
-    2,
-    'the overlay hosts both the push dialog and the toast',
+    3,
+    'the overlay hosts the push dialog, the pull dialog and the toast',
   );
   assert.equal(
     registrations.some(({ options }) => options.name === 'settings.section'),
