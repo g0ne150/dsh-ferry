@@ -183,6 +183,18 @@ ferry_pull(peer="workstation", session="session-…", targetDir="/home/zapan/pro
 
 打包格式：`DSH-FERRY-BUNDLE/1`，gzip 流；首帧是 JSON manifest，之后按 manifest 顺序逐个“长度帧 + 内容”，每个文件带 SHA-256。零字节文件同样占一帧，保证顺序对齐。
 
+## 安装
+
+```bash
+dsh plugin --profile web add dsh-ferry
+```
+
+或在 GUI 的插件页搜索 `dsh-ferry` 安装（安装后默认启用，侧栏出现图标）。
+
+- 要求 DSH `>=0.2.1-rc.5 <0.3.0-0`、Node `>=20.3`（不满足时安装会被拒绝并提示豁免命令）。
+- 两个实例都要装同一版本：追加更新依赖两端一致的状态判定协议，旧版对端只能新建副本。
+- 升级：`dsh plugin --profile web add dsh-ferry@latest`，然后重启该实例。
+
 ## 开发与验证
 
 ```bash
@@ -203,3 +215,16 @@ node --test 'test/*.test.js'
 - 附件总字节超过 `maxAttachmentBytes` 时，超出部分不传，会话里会留下悬空引用并在结果中警告。
 - 会话格式版本不一致时拒绝导入；两端需保持 DSH 版本一致。
 - 单次上传是一整条 HTTP 请求。对端 Node 服务的 `requestTimeout` 默认 5 分钟，因此超大工作区在慢链路上可能超时；默认已排除依赖/构建产物，常规仓库不受影响。链路较慢时建议先缩小传输范围（`exclude` / `include`）。
+
+## 发布到 npm（维护者）
+
+`package.json` 已带 `publishConfig.registry`，所以本机 npm 指向镜像（如华为云、npmmirror）也不影响发布：
+
+```bash
+npm login --registry=https://registry.npmjs.org/   # 或写入 granular token
+npm publish                                        # prepublishOnly 会先跑测试
+npm view dsh-ferry version --registry=https://registry.npmjs.org/
+```
+
+发布前用 `npm pack --dry-run` 检查包内容（`files` 已限定为入口、`lib/`、`client.js`、`locale/`、`cordis.patch.yml`、`icon.svg`、README 和 `docs/`）。
+版本号遵循语义化版本：改了协议/行为就走 minor，纯修复走 patch。
