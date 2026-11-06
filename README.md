@@ -228,3 +228,5 @@ npm view dsh-ferry version --registry=https://registry.npmjs.org/
 
 发布前用 `npm pack --dry-run` 检查包内容（`files` 已限定为入口、`lib/`、`client.js`、`locale/`、`cordis.patch.yml`、`icon.svg`、README 和 `docs/`）。
 版本号遵循语义化版本：改了协议/行为就走 minor，纯修复走 patch。
+
+首次发布若走了 npm 的 staged publish，包里会先出现一个 `0.0.0-stage` 占位版本（manifest 没有 `dsh` 字段），镜像可能缓存它几分钟。此时安装会报 `dsh-ferry declares no dsh.bundle`，等真实版本同步后再装即可；也可以 `npm deprecate dsh-ferry@0.0.0-stage "staged-publish placeholder"` 标记作废。
