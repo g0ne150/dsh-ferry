@@ -63,11 +63,15 @@ window.__ModuleLoader__.load({
 .ferry-modal-toolbar{display:flex;align-items:flex-start;gap:10px}
 .ferry-modal-toolbar .ferry-modal-hint{flex:1 1 auto}
 .ferry-choice-list{display:flex;flex-direction:column;gap:2px;max-height:240px;overflow:auto;margin:2px 0}
-.ferry-choice{display:flex;align-items:flex-start;gap:8px;padding:8px 10px;border:.5px solid transparent;border-radius:7px;font-size:13px;line-height:19px;cursor:pointer}
+.ferry-choice{display:flex;align-items:center;gap:10px;padding:8px 10px;border:.5px solid transparent;border-radius:7px;font-size:13px;line-height:19px;cursor:pointer}
 .ferry-choice:hover{background:var(--dsw-alias-bg-layer-2)}
 .ferry-choice.selected{border-color:var(--dsw-alias-brand-primary);background:var(--dsw-alias-bg-layer-2)}
+.ferry-choice input[type=radio]{flex:none;margin:0;width:14px;height:14px;cursor:inherit}
+.ferry-choice.offline{opacity:.5;cursor:default}
+.ferry-choice.offline:hover{background:transparent}
+.ferry-status{display:inline-flex;align-items:center;gap:6px;flex:none;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary)}
 .ferry-choice-body{flex:1 1 auto;min-width:0}
-.ferry-choice-row{display:flex;align-items:baseline;gap:8px;min-width:0}
+.ferry-choice-row{display:flex;align-items:center;gap:8px;min-width:0}
 .ferry-state{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);margin-top:2px;white-space:normal}
 .ferry-mode{display:flex;flex-direction:column;gap:6px;border-top:.5px solid var(--dsw-alias-border-l1);padding-top:10px}
 .ferry-mode-label{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:18px;cursor:pointer}
@@ -1128,7 +1132,9 @@ window.__ModuleLoader__.load({
                 'label',
                 {
                   key: candidate.id,
-                  className: `ferry-choice ${selected === candidate.id ? 'selected' : ''}`,
+                  className: `ferry-choice ${selected === candidate.id ? 'selected' : ''}${
+                    candidate.online === true ? '' : ' offline'
+                  }`,
                 },
                 h('input', {
                   type: 'radio',
@@ -1138,7 +1144,6 @@ window.__ModuleLoader__.load({
                   disabled: busy || candidate.online !== true,
                   onChange: () => setSelected(candidate.id),
                 }),
-                h('span', { className: `ferry-dot ${candidate.online === true ? 'on' : 'off'}` }),
                 h(
                   'div',
                   { className: 'ferry-choice-body' },
@@ -1151,9 +1156,18 @@ window.__ModuleLoader__.load({
                       candidate.name || candidate.id,
                     ),
                     h('span', { className: 'ferry-spacer' }),
-                    candidate.online === true && typeof candidate.latencyMs === 'number'
-                      ? h('span', { className: 'ferry-meta' }, `${candidate.latencyMs}${t('latency')}`)
-                      : h('span', { className: 'ferry-meta' }, t('offline')),
+                    h(
+                      'span',
+                      { className: 'ferry-status' },
+                      h('span', { className: `ferry-dot ${candidate.online === true ? 'on' : 'off'}` }),
+                      h(
+                        'span',
+                        null,
+                        candidate.online === true && typeof candidate.latencyMs === 'number'
+                          ? `${candidate.latencyMs}${t('latency')}`
+                          : t('offline'),
+                      ),
+                    ),
                   ),
                   candidate.online === true
                     ? h('div', { className: 'ferry-state' }, stateLine('state', candidate, total, t))
