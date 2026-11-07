@@ -71,16 +71,20 @@ window.__ModuleLoader__.load({
 .ferry-choice.offline:hover{background:transparent}
 .ferry-status{display:inline-flex;align-items:center;gap:6px;flex:none;font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary)}
 .ferry-choice-body{flex:1 1 auto;min-width:0}
-.ferry-choice-row{display:flex;align-items:center;gap:8px;min-width:0}
 .ferry-state{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary);margin-top:2px;white-space:normal}
-.ferry-mode{display:flex;flex-direction:column;gap:6px;border-top:.5px solid var(--dsw-alias-border-l1);padding-top:10px}
-.ferry-mode-label{display:flex;align-items:flex-start;gap:8px;font-size:12px;line-height:18px;cursor:pointer}
-.ferry-mode-label.disabled{opacity:.45;cursor:default}
-.ferry-mode-text{display:flex;flex-direction:column;min-width:0}
+.ferry-mode{display:flex;flex-direction:column;gap:2px;padding-top:6px}
+.ferry-mode-title{font-size:12px;line-height:18px;font-weight:500;color:var(--dsw-alias-label-primary);padding:0 10px;margin-bottom:2px}
+.ferry-mode-label{display:flex;align-items:flex-start;gap:10px;padding:5px 10px;border-radius:7px;font-size:12px;line-height:18px;cursor:pointer}
+.ferry-mode-label:hover:not(.disabled){background:var(--dsw-alias-bg-layer-2)}
+.ferry-mode-label input[type=radio]{flex:none;margin:2px 0 0;width:14px;height:14px;cursor:inherit}
+.ferry-mode-label.disabled{cursor:default;color:var(--dsw-alias-label-secondary)}
+.ferry-mode-text{display:flex;flex-direction:column;min-width:0;gap:1px}
+.ferry-mode-hint{font-size:11px;line-height:16px;color:var(--dsw-alias-label-secondary)}
+.ferry-stack{display:flex;flex-direction:column;gap:4px}
 .ferry-choice-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ferry-modal-error{font-size:11px;line-height:16px;color:var(--dsw-alias-state-error-primary)}
 .ferry-modal-foot{display:flex;align-items:center;gap:8px;border-top:.5px solid var(--dsw-alias-border-l1);padding-top:12px;margin-top:2px}
-.ferry-check{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--dsw-alias-label-secondary);cursor:pointer}
+.ferry-check{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--dsw-alias-label-secondary);cursor:pointer}
 .ferry-toasts{position:fixed;right:20px;bottom:20px;z-index:90;display:flex;flex-direction:column;gap:8px;max-width:380px;pointer-events:none}
 .ferry-toast{pointer-events:auto;border:.5px solid var(--dsw-alias-border-l2);border-left-width:3px;border-radius:8px;background:var(--dsw-alias-bg-overlay);padding:10px 12px;font-size:12px;line-height:18px;box-shadow:0 8px 24px rgba(0,0,0,.24)}
 .ferry-toast.success{border-left-color:var(--dsw-alias-state-success-primary)}
@@ -161,10 +165,10 @@ window.__ModuleLoader__.load({
       mergeInMenu: 'Merge into an existing directory (backs up)',
       modeTitle: 'How to send it',
       modeNew: 'New session',
-      modeNewHint: 'Create a separate copy there; the peer keeps whatever it already has.',
+      modeNewHint: 'Create a separate copy; the peer keeps what it already has.',
       modeUpdate: 'Append update',
-      modeUpdateHint: 'Keep one session: add the events the peer is missing and merge the workspace.',
-      modeUpdateUnavailable: 'Not possible for this peer',
+      modeUpdateHint: 'Append only the missing events and merge the workspace.',
+      modeUpdateUnavailable: 'Not available for this peer',
       state_absent: 'No copy there yet; it will be created',
       state_behind: 'The peer has {have} events; {add} will be appended',
       state_same: 'The peer has {have} events and matches; only workspace files are synced',
@@ -291,10 +295,10 @@ window.__ModuleLoader__.load({
       mergeInMenu: '合并已有目录（自动备份）',
       modeTitle: '推送方式',
       modeNew: '新建会话',
-      modeNewHint: '在对方创建一份独立副本，对方已有的内容不动。',
+      modeNewHint: '在对方创建独立副本，不动已有内容。',
       modeUpdate: '追加更新',
-      modeUpdateHint: '沿用同一个会话：补上对方缺少的事件，并合并工作区。',
-      modeUpdateUnavailable: '当前对端不可用',
+      modeUpdateHint: '只补上对方缺少的事件，并合并工作区。',
+      modeUpdateUnavailable: '当前对端不可追加',
       state_absent: '对方没有此会话，将新建',
       state_behind: '对方已有 {have} 条，本次追加 {add} 条',
       state_same: '对方已有 {have} 条且内容一致，只同步工作区文件',
@@ -1108,7 +1112,7 @@ window.__ModuleLoader__.load({
             'span',
             { className: 'ferry-mode-text' },
             h('span', null, label),
-            h('span', { className: 'ferry-modal-hint' }, hint),
+            h('span', { className: 'ferry-mode-hint' }, enabled ? hint : t('modeUpdateUnavailable')),
           ),
         );
 
@@ -1149,29 +1153,24 @@ window.__ModuleLoader__.load({
                   { className: 'ferry-choice-body' },
                   h(
                     'div',
-                    { className: 'ferry-choice-row' },
-                    h(
-                      'span',
-                      { className: 'ferry-choice-name', title: candidate.name || candidate.id },
-                      candidate.name || candidate.id,
-                    ),
-                    h('span', { className: 'ferry-spacer' }),
-                    h(
-                      'span',
-                      { className: 'ferry-status' },
-                      h('span', { className: `ferry-dot ${candidate.online === true ? 'on' : 'off'}` }),
-                      h(
-                        'span',
-                        null,
-                        candidate.online === true && typeof candidate.latencyMs === 'number'
-                          ? `${candidate.latencyMs}${t('latency')}`
-                          : t('offline'),
-                      ),
-                    ),
+                    { className: 'ferry-choice-name', title: candidate.name || candidate.id },
+                    candidate.name || candidate.id,
                   ),
                   candidate.online === true
                     ? h('div', { className: 'ferry-state' }, stateLine('state', candidate, total, t))
                     : null,
+                ),
+                h(
+                  'span',
+                  { className: 'ferry-status' },
+                  h('span', { className: `ferry-dot ${candidate.online === true ? 'on' : 'off'}` }),
+                  h(
+                    'span',
+                    null,
+                    candidate.online === true && typeof candidate.latencyMs === 'number'
+                      ? `${candidate.latencyMs}${t('latency')}`
+                      : t('offline'),
+                  ),
                 ),
               ),
             ),
@@ -1229,12 +1228,12 @@ window.__ModuleLoader__.load({
             : h(
                 'div',
                 { className: 'ferry-mode' },
-                h('div', { className: 'ferry-modal-hint' }, t('modeTitle')),
+                h('div', { className: 'ferry-mode-title' }, t('modeTitle')),
                 modeOption('new', t('modeNew'), t('modeNewHint'), true),
                 modeOption(
                   'update',
                   t('modeUpdate'),
-                  canAppend ? t('modeUpdateHint') : `${t('modeUpdateHint')} · ${t('modeUpdateUnavailable')}`,
+                  t('modeUpdateHint'),
                   canAppend,
                 ),
               ),
@@ -1423,7 +1422,7 @@ window.__ModuleLoader__.load({
             'span',
             { className: 'ferry-mode-text' },
             h('span', null, label),
-            h('span', { className: 'ferry-modal-hint' }, hint),
+            h('span', { className: 'ferry-mode-hint' }, enabled ? hint : t('modeUpdateUnavailable')),
           ),
         );
 
@@ -1448,18 +1447,18 @@ window.__ModuleLoader__.load({
           h(
             'div',
             { className: 'ferry-mode' },
-            h('div', { className: 'ferry-modal-hint' }, t('modeTitle')),
+            h('div', { className: 'ferry-mode-title' }, t('modeTitle')),
             modeOption('new', t('modeNew'), t('modeNewHint'), true),
             modeOption(
               'update',
               t('modeUpdate'),
-              canAppend ? t('modeUpdateHint') : `${t('modeUpdateHint')} · ${t('modeUpdateUnavailable')}`,
+              t('modeUpdateHint'),
               canAppend,
             ),
           ),
           h(
             'label',
-            { className: 'ferry-mode-text', style: { gap: '4px' } },
+            { className: 'ferry-stack' },
             h('span', { className: 'ferry-modal-hint' }, t('targetDir')),
             h('input', {
               className: 'ferry-input wide',
