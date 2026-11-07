@@ -169,19 +169,27 @@ window.__ModuleLoader__.load({
       modeUpdate: 'Append update',
       modeUpdateHint: 'Append only the missing events and merge the workspace.',
       modeUpdateUnavailable: 'Not available for this peer',
+      blocked_state_open: 'The peer has it open',
+      blocked_state_ahead: "The peer's copy is longer",
+      blocked_state_diverged: 'The two copies differ',
+      blocked_state_absent: 'The peer has no copy yet',
+      blocked_local_open: 'It is open here',
+      blocked_local_ahead: 'The local copy is longer',
+      blocked_local_diverged: 'The two copies differ',
+      blocked_local_absent: 'No local copy here yet',
       state_absent: 'No copy there yet; it will be created',
       state_behind: 'The peer has {have} events; {add} will be appended',
       state_same: 'The peer has {have} events and matches; only workspace files are synced',
       state_ahead: 'The peer has {have} events, more than here; only a new copy is possible',
       state_diverged: 'The peer copy has diverged; only a new copy is possible',
-      state_active: 'The peer has this session open; only a new copy is possible',
+      state_active: 'The peer has this session open; close it or restart that instance to append',
       state_unknown: 'Cannot tell what the peer has (offline, or its plugin is older; append updates need the same version on both sides)',
       local_absent: 'No local copy yet; it will be created',
       local_behind: 'This instance has {have} events; {add} will be appended',
       local_same: 'This instance has {have} events and matches; only workspace files are synced',
       local_ahead: 'This instance has {have} events, more than the peer; only a new copy is possible',
       local_diverged: 'The local copy has diverged; only a new copy is possible',
-      local_active: 'This session is open here; only a new copy is possible',
+      local_active: 'This session is open here; close it or restart this instance to append',
       local_unknown: 'Cannot tell what this instance has',
       pullDialogTitle: 'Pull from another instance',
       pullDialogChecking: 'Checking the local copy…',
@@ -190,7 +198,7 @@ window.__ModuleLoader__.load({
       appended: 'events appended',
       code_session_ahead: 'The peer has a longer copy of this session; send it as a new session.',
       code_session_diverged: 'The peer has a different copy of this session; send it as a new session.',
-      code_session_active: 'The session is open there; close it or stop its turn before updating it.',
+      code_session_active: 'The session is open there; close it or restart that instance before updating it.',
       code_session_unreadable: 'The stored session log could not be read, so the peer copy cannot be compared.',
       code_sessionForked: 'The two copies had diverged, so the push created a separate session on the peer.',
       files: 'files',
@@ -299,19 +307,27 @@ window.__ModuleLoader__.load({
       modeUpdate: '追加更新',
       modeUpdateHint: '只补上对方缺少的事件，并合并工作区。',
       modeUpdateUnavailable: '当前对端不可追加',
+      blocked_state_open: '对方已打开该会话',
+      blocked_state_ahead: '对方副本更长',
+      blocked_state_diverged: '两边内容已不同',
+      blocked_state_absent: '对方没有此会话',
+      blocked_local_open: '本地已打开该会话',
+      blocked_local_ahead: '本地副本更长',
+      blocked_local_diverged: '两边内容已不同',
+      blocked_local_absent: '本地还没有此会话',
       state_absent: '对方没有此会话，将新建',
       state_behind: '对方已有 {have} 条，本次追加 {add} 条',
       state_same: '对方已有 {have} 条且内容一致，只同步工作区文件',
       state_ahead: '对方已有 {have} 条，比本地多，只能新建副本',
       state_diverged: '对方内容与本地不同，只能新建副本',
-      state_active: '对方已打开该会话，只能新建副本',
+      state_active: '对方已打开该会话；在那边关闭或重启实例后即可追加',
       state_unknown: '无法判断对方状态（离线，或对方插件较旧；追加更新需要两端同版本）',
       local_absent: '本地没有此会话，将新建',
       local_behind: '本地已有 {have} 条，本次追加 {add} 条',
       local_same: '本地已有 {have} 条且内容一致，只同步工作区文件',
       local_ahead: '本地已有 {have} 条，比远端多，只能新建副本',
       local_diverged: '本地内容与远端不同，只能新建副本',
-      local_active: '本地已打开该会话，只能新建副本',
+      local_active: '本地已打开该会话；关闭或重启本实例后即可追加',
       local_unknown: '无法判断本地状态',
       pullDialogTitle: '从其他实例拉取',
       pullDialogChecking: '正在检查本地副本…',
@@ -320,7 +336,7 @@ window.__ModuleLoader__.load({
       appended: '条事件已追加',
       code_session_ahead: '对方有比本地更长的副本，请改为新建会话推送。',
       code_session_diverged: '对方已有内容不同的同名会话，请改为新建会话推送。',
-      code_session_active: '该会话在对端/本地处于打开状态，请先关闭或停止后再更新。',
+      code_session_active: '该会话在对端/本地处于打开状态，请先关闭或重启实例后再更新。',
       code_session_unreadable: '会话日志无法读取，无法比较对方副本。',
       code_sessionForked: '两边内容已分叉，已在对方新建独立会话。',
       files: '文件',
@@ -965,6 +981,20 @@ window.__ModuleLoader__.load({
     }
 
     /**
+     * Why an in-place append is unavailable, phrased for the row it belongs to.
+     * @param {'state'|'local'} side - whose copy the row describes.
+     * @param {object | undefined} row - plan row.
+     * @param {(key: string) => string} t - translator.
+     * @returns {string} short reason.
+     */
+    function blockedReason(side, row, t) {
+      const reason = row?.active === true ? 'open' : (row?.state ?? 'unknown');
+      const key = `blocked_${side}_${reason}`;
+      const text = t(key);
+      return text === key ? t('modeUpdateUnavailable') : text;
+    }
+
+    /**
      * Render one state line for a peer row (`state_*`) or a local plan row
      * (`local_*`).
      * @param {'state'|'local'} side - whose copy the row describes.
@@ -1096,7 +1126,7 @@ window.__ModuleLoader__.load({
         }
       };
 
-      const modeOption = (value, label, hint, enabled) =>
+      const modeOption = (value, label, hint, enabled, reason) =>
         h(
           'label',
           { key: value, className: `ferry-mode-label ${enabled ? '' : 'disabled'}` },
@@ -1112,7 +1142,7 @@ window.__ModuleLoader__.load({
             'span',
             { className: 'ferry-mode-text' },
             h('span', null, label),
-            h('span', { className: 'ferry-mode-hint' }, enabled ? hint : t('modeUpdateUnavailable')),
+            h('span', { className: 'ferry-mode-hint' }, enabled ? hint : reason ?? t('modeUpdateUnavailable')),
           ),
         );
 
@@ -1235,6 +1265,7 @@ window.__ModuleLoader__.load({
                   t('modeUpdate'),
                   t('modeUpdateHint'),
                   canAppend,
+                  blockedReason('state', selectedPeer, t),
                 ),
               ),
           mode === 'new'
@@ -1406,7 +1437,7 @@ window.__ModuleLoader__.load({
         }
       };
 
-      const modeOption = (value, label, hint, enabled) =>
+      const modeOption = (value, label, hint, enabled, reason) =>
         h(
           'label',
           { key: value, className: `ferry-mode-label ${enabled ? '' : 'disabled'}` },
@@ -1422,7 +1453,7 @@ window.__ModuleLoader__.load({
             'span',
             { className: 'ferry-mode-text' },
             h('span', null, label),
-            h('span', { className: 'ferry-mode-hint' }, enabled ? hint : t('modeUpdateUnavailable')),
+            h('span', { className: 'ferry-mode-hint' }, enabled ? hint : reason ?? t('modeUpdateUnavailable')),
           ),
         );
 
@@ -1454,6 +1485,7 @@ window.__ModuleLoader__.load({
               t('modeUpdate'),
               t('modeUpdateHint'),
               canAppend,
+              blockedReason('local', plan, t),
             ),
           ),
           h(
