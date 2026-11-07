@@ -76,6 +76,41 @@ test('an update refuses a copy that is longer here', async () => {
   );
 });
 
+test('an update ignores runtime events each instance wrote for itself', async () => {
+  const env = await makeEnv();
+  const id = 'session-runtime';
+  const header = { id, version: 4, createdAt: 1000, cwd: env.workspace };
+  // The receiver opened the session itself: DSH stamped its own seed marker and
+  // model choice before the sender's next turn.
+  env.sessions.set(id, {
+    header,
+    events: [
+      event(0),
+      event(1),
+      { seq: 2, type: 'session/end-seed', time: 100, data: {} },
+      { seq: 3, type: 'model/selection', time: 100, data: { model: 'deepseek-flash' } },
+    ],
+  });
+
+  const body = buildBundle({
+    id,
+    header,
+    events: [
+      event(0),
+      event(1),
+      { seq: 2, type: 'session/end-seed', time: 999, data: {} },
+      { seq: 3, type: 'model/selection', time: 999, data: { model: 'deepseek-pro' } },
+      event(4),
+    ],
+  });
+  const result = await env.transfer.importSession({ body, targetDir: env.workspace, merge: true, update: true });
+
+  assert.equal(result.status, 'updated');
+  assert.equal(result.appended, 1);
+  assert.equal(env.sessions.get(id).events.length, 5);
+  assert.equal(env.sessions.get(id).events.at(-1).seq, 4);
+});
+
 test('an update refuses a copy that diverged instead of rewriting events', async () => {
   const env = await makeEnv();
   const id = 'session-diverged';

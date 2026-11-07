@@ -18,6 +18,16 @@ test('hashing ignores attachment identity but not the rest of the event', () => 
   assert.notEqual(hashEvents(first), hashEvents(different));
 });
 
+test('a locally stamped seed marker does not read as divergence', () => {
+  const marker = (time, data = {}) => ({ seq: 1, type: 'session/end-seed', time, data });
+  assert.equal(hashEvents([event(0), marker(100)]), hashEvents([event(0), marker(999)]));
+  assert.notEqual(
+    hashEvents([event(0), marker(100)]),
+    hashEvents([event(0), marker(100, { inherited: true })]),
+    'the marker payload still participates',
+  );
+});
+
 test('a tail fingerprint covers the last events only', () => {
   const events = [event(0), event(1), event(2), event(3), event(4), event(5), event(6), event(7), event(8), event(9)];
   const tail = tailOf(events);
