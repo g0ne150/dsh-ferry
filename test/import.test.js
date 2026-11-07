@@ -63,6 +63,42 @@ test('a plain import of identical content stays a no-op', async () => {
   assert.equal(result.sessionId, id);
 });
 
+test('an update renumbers the tail when the receiver wrote more runtime events', async () => {
+  const env = await makeEnv();
+  const id = 'session-offset';
+  const header = { id, version: 4, createdAt: 1000, cwd: env.workspace };
+  env.sessions.set(id, {
+    header,
+    events: [
+      event(0),
+      event(1),
+      { seq: 2, type: 'session/end-seed', time: 100, data: {} },
+      { seq: 3, type: 'model/selection', time: 100, data: { model: 'a' } },
+      { seq: 4, type: 'model/selection', time: 100, data: { model: 'b' } },
+    ],
+  });
+
+  const body = buildBundle({
+    id,
+    header,
+    events: [
+      event(0),
+      event(1),
+      { seq: 2, type: 'session/end-seed', time: 999, data: {} },
+      { seq: 3, type: 'model/selection', time: 999, data: { model: 'c' } },
+      { seq: 4, type: 'request/header', time: 5, data: { header: {}, reason: 'turn' } },
+      { seq: 5, type: 'developer/message', time: 6, data: { turn: 1, step: 1, message: {}, headerSeq: 4 } },
+    ],
+  });
+  const result = await env.transfer.importSession({ body, targetDir: env.workspace, merge: true, update: true });
+
+  const stored = env.sessions.get(id).events;
+  assert.equal(result.status, 'updated');
+  assert.equal(result.appended, 2);
+  assert.deepEqual(stored.slice(-2).map((item) => item.seq), [5, 6], 'the tail continues the receiver numbering');
+  assert.equal(stored.at(-1).data.headerSeq, 5, 'sequence references move with the tail');
+});
+
 test('an update refuses a copy that is longer here', async () => {
   const env = await makeEnv();
   const id = 'session-ahead';
