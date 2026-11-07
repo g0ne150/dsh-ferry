@@ -18,6 +18,12 @@ test('hashing ignores attachment identity but not the rest of the event', () => 
   assert.notEqual(hashEvents(first), hashEvents(different));
 });
 
+test('comparing ignores the stored sequence number and reference offsets', () => {
+  const event = (seq, headerSeq) => ({ seq, type: 'developer/message', time: 5, data: { headerSeq, message: 'x' } });
+  assert.equal(hashEvents([event(0, 3)]), hashEvents([event(7, 99)]));
+  assert.notEqual(hashEvents([event(0, 3)]), hashEvents([{ ...event(0, 3), data: { headerSeq: 3, message: 'y' } }]));
+});
+
 test('a locally stamped seed marker does not read as divergence', () => {
   const marker = (time, data = {}) => ({ seq: 1, type: 'session/end-seed', time, data });
   assert.equal(hashEvents([event(0), marker(100)]), hashEvents([event(0), marker(999)]));
