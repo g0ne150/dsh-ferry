@@ -63,6 +63,49 @@ test('a plain import of identical content stays a no-op', async () => {
   assert.equal(result.sessionId, id);
 });
 
+test('an update for a session this instance holds is queued and applied on the next start', async () => {
+  const env = await makeEnv();
+  const id = 'session-queued';
+  const header = { id, version: 4, createdAt: 1000, cwd: env.workspace };
+  env.sessions.set(id, { header, events: events(0, 2) });
+  // The GUI has the session open, so its Agent holds the write handle.
+  env.agents.set(id, { status: 'idle' });
+
+  const body = buildBundle({ id, header, events: events(0, 5) });
+  const queued = await env.transfer.importSession({
+    body,
+    targetDir: env.workspace,
+    merge: true,
+    update: true,
+    queue: true,
+  });
+  assert.equal(queued.status, 'queued');
+  assert.equal(env.sessions.get(id).events.length, 2, 'nothing is written while the session is open');
+  const pending = await fs.readdir(path.join(env.config.dataDir, 'pending'));
+  assert.equal(pending.filter((name) => name.endsWith('.bundle')).length, 1, 'the upload is stored');
+
+  env.agents.delete(id);
+  const applied = await env.transfer.applyPending();
+  assert.equal(applied.length, 1);
+  assert.equal(applied[0].status, 'updated');
+  assert.equal(env.sessions.get(id).events.length, 5);
+  assert.equal((await fs.readdir(path.join(env.config.dataDir, 'pending'))).length, 0, 'the queue is drained');
+});
+
+test('without queueing, an open session still refuses the update', async () => {
+  const env = await makeEnv();
+  const id = 'session-open';
+  const header = { id, version: 4, createdAt: 1000, cwd: env.workspace };
+  env.sessions.set(id, { header, events: events(0, 2) });
+  env.agents.set(id, { status: 'idle' });
+
+  const body = buildBundle({ id, header, events: events(0, 5) });
+  await assert.rejects(
+    env.transfer.importSession({ body, targetDir: env.workspace, merge: true, update: true }),
+    (error) => error.code === 'session-active',
+  );
+});
+
 test('an update renumbers the tail when the receiver wrote more runtime events', async () => {
   const env = await makeEnv();
   const id = 'session-offset';

@@ -87,6 +87,8 @@ export async function makeEnv() {
       registry.unarchived.push(id);
     },
   };
+  /** Live agents by session id; a presence here is what "open" means. */
+  const agents = new Map();
   const ctx = {
     sessionPersistence: persistence,
     workspaceRegistry: registry,
@@ -98,12 +100,13 @@ export async function makeEnv() {
         throw new Error('no attachments in these fixtures');
       },
     },
-    get() {
+    get(name) {
+      if (name === 'agents') return { get: (id) => agents.get(id) };
       return undefined;
     },
   };
   const transfer = createTransfer({ ctx, config, rules: config.workspace });
-  return { root, workspace, config, sessions, registry, ctx, transfer };
+  return { root, workspace, config, sessions, registry, agents, ctx, transfer };
 }
 
 /**

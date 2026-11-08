@@ -210,6 +210,7 @@ window.__ModuleLoader__.load({
       success: 'Done',
       failed: 'Failed',
       alreadyThere: 'Already present with the same content; nothing was overwritten.',
+      queuedNotice: 'Delivered. That instance has the session open, so the update is applied when it next starts.',
       resultTarget: 'Target',
       settingsUnavailable: 'This profile has no config editor; edit cordis.patch.yml instead.',
       noPeerSelected: 'Choose a peer first.',
@@ -238,6 +239,7 @@ window.__ModuleLoader__.load({
       code_workspaceAttachFailed: 'The workspace was materialized but the session was not attached to it.',
       code_workspaceUnarchiveFailed: 'The session was updated but could not be unarchived.',
       code_sourceArchiveFailed: 'The transfer succeeded but the source session could not be archived.',
+      code_sourceArchiveSkippedQueued: 'The update is queued on the peer, so the source session was left unarchived.',
       code_workspaceOverLimit: 'The workspace exceeded the configured size limit.',
       code_directoryUnreadable: 'A directory could not be read.',
       code_entryUnreadable: 'A file could not be read.',
@@ -349,6 +351,7 @@ window.__ModuleLoader__.load({
       success: '完成',
       failed: '失败',
       alreadyThere: '目标已有内容相同的会话，没有覆盖任何内容。',
+      queuedNotice: '已送达。对方正打开着该会话，更新会在它下次启动时自动应用。',
       resultTarget: '目标',
       settingsUnavailable: '当前 profile 没有配置编辑器，请直接编辑 cordis.patch.yml。',
       noPeerSelected: '请先选择一个对端。',
@@ -377,6 +380,7 @@ window.__ModuleLoader__.load({
       code_workspaceAttachFailed: '工作区已写入，但会话没有挂到该工作区。',
       code_workspaceUnarchiveFailed: '会话已更新，但没能从归档中恢复。',
       code_sourceArchiveFailed: '传输成功，但源会话归档失败。',
+      code_sourceArchiveSkippedQueued: '更新已排队到对端，因此源会话没有归档。',
       code_workspaceOverLimit: '工作区超过配置的大小上限。',
       code_directoryUnreadable: '有一个目录无法读取。',
       code_entryUnreadable: '有一个文件无法读取。',
@@ -496,6 +500,7 @@ window.__ModuleLoader__.load({
 
     function noticeFor(result, t) {
       if (result?.status === 'exists') return { tone: 'success', text: t('alreadyThere') };
+      if (result?.status === 'queued') return { tone: 'success', text: t('queuedNotice') };
       const text = transferSummary(result, t);
       return { tone: 'success', text: text === '' ? t('success') : text };
     }

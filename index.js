@@ -49,6 +49,12 @@ export function apply(ctx, config) {
     );
   });
 
+  // Queued updates from an earlier push are applied on this start, before a
+  // browser can resume the sessions they target.
+  void transfer.applyPending().catch((error) => {
+    log(`dsh-ferry: applying queued updates failed: ${error instanceof Error ? error.message : String(error)}`);
+  });
+
   const browserHandler = createBrowserHandler({ ferry, transfer, settings, config: normalized, log });
   ctx.inject(['connection'], (connCtx) => {
     const registry = connCtx.connection?.fetch;

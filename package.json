@@ -1,6 +1,6 @@
 {
   "name": "dsh-ferry",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "Move Sessions and their Workspace between DSH instances over any reachable network.",
   "license": "MIT",
