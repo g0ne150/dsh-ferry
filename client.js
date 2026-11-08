@@ -168,6 +168,7 @@ window.__ModuleLoader__.load({
       modeNewHint: 'Create a separate copy; the peer keeps what it already has.',
       modeUpdate: 'Append update',
       modeUpdateHint: 'Append only the missing events and merge the workspace.',
+      modeUpdateHintQueued: 'The peer has it open; the update is applied when it next starts.',
       modeUpdateUnavailable: 'Not available for this peer',
       blocked_state_open: 'The peer has it open',
       blocked_state_ahead: "The peer's copy is longer",
@@ -182,7 +183,7 @@ window.__ModuleLoader__.load({
       state_same: 'The peer has {have} events and matches; only workspace files are synced',
       state_ahead: 'The peer has {have} events, more than here; only a new copy is possible',
       state_diverged: 'The peer copy has diverged; only a new copy is possible',
-      state_active: 'The peer has this session open; close it or restart that instance to append',
+      state_activeSuffix: ' (open there; applied when that instance next starts)',
       state_unknown: 'Cannot tell what the peer has (offline, or its plugin is older; append updates need the same version on both sides)',
       local_absent: 'No local copy yet; it will be created',
       local_behind: 'This instance has {have} events; {add} will be appended',
@@ -309,6 +310,7 @@ window.__ModuleLoader__.load({
       modeNewHint: '在对方创建独立副本，不动已有内容。',
       modeUpdate: '追加更新',
       modeUpdateHint: '只补上对方缺少的事件，并合并工作区。',
+      modeUpdateHintQueued: '对方开着该会话，更新先送达，等它下次启动时自动应用。',
       modeUpdateUnavailable: '当前对端不可追加',
       blocked_state_open: '对方已打开该会话',
       blocked_state_ahead: '对方副本更长',
@@ -323,7 +325,7 @@ window.__ModuleLoader__.load({
       state_same: '对方已有 {have} 条且内容一致，只同步工作区文件',
       state_ahead: '对方已有 {have} 条，比本地多，只能新建副本',
       state_diverged: '对方内容与本地不同，只能新建副本',
-      state_active: '对方已打开该会话；在那边关闭或重启实例后即可追加',
+      state_activeSuffix: '（对方正打开着该会话，将在其下次启动时应用）',
       state_unknown: '无法判断对方状态（离线，或对方插件较旧；追加更新需要两端同版本）',
       local_absent: '本地没有此会话，将新建',
       local_behind: '本地已有 {have} 条，本次追加 {add} 条',
@@ -979,23 +981,30 @@ window.__ModuleLoader__.load({
     /**
      * Whether the receiving side can append to its own copy in place.
      * @param {object | undefined} row - peer or local plan row.
+     * @param {boolean} [allowQueued] - treat an open session as acceptable
+     *   because the receiver applies the update when it next starts.
      * @returns {boolean} true when an append update is possible.
      */
-    function appendAvailable(row) {
+    function appendAvailable(row, allowQueued = false) {
       if (row === undefined || row === null) return false;
-      if (row.active === true) return false;
+      if (row.active === true && !allowQueued) return false;
       return row.state === 'behind' || row.state === 'same';
     }
 
     /**
      * Why an in-place append is unavailable, phrased for the row it belongs to.
+     *
+     * When the receiving side queues updates, an open session is not the
+     * blocker; whatever makes the two copies incompatible is.
      * @param {'state'|'local'} side - whose copy the row describes.
      * @param {object | undefined} row - plan row.
      * @param {(key: string) => string} t - translator.
+     * @param {boolean} [allowQueued] - the receiver can apply the update later.
      * @returns {string} short reason.
      */
-    function blockedReason(side, row, t) {
-      const reason = row?.active === true ? 'open' : (row?.state ?? 'unknown');
+    function blockedReason(side, row, t, allowQueued = false) {
+      const state = row?.state ?? 'unknown';
+      const reason = row?.active === true && !allowQueued ? 'open' : state;
       const key = `blocked_${side}_${reason}`;
       const text = t(key);
       return text === key ? t('modeUpdateUnavailable') : text;
@@ -1013,10 +1022,16 @@ window.__ModuleLoader__.load({
     function stateLine(side, row, total, t) {
       const have = typeof row?.eventCount === 'number' ? row.eventCount : 0;
       const add = typeof total === 'number' ? Math.max(0, total - have) : 0;
-      const key = row?.active === true ? `${side}_active` : `${side}_${row?.state ?? 'unknown'}`;
+      const state = row?.state ?? 'unknown';
+      // A local open copy means this very instance is running it, which no
+      // queue shortens; the peer case can be deferred to its next start.
+      const deferrable = side === 'state' && (state === 'behind' || state === 'same');
+      const key = row?.active === true && !deferrable ? `${side}_active` : `${side}_${state}`;
       const template = t(key);
       if (template === key) return t(`${side}_unknown`);
-      return fill(template, { have, add });
+      const text = fill(template, { have, add });
+      if (row?.active === true && deferrable) return `${text}${t('state_activeSuffix')}`;
+      return text;
     }
 
     /* ---------- push dialog: reachability is checked here, not in the menu ---------- */
@@ -1077,7 +1092,7 @@ window.__ModuleLoader__.load({
       );
 
       const selectedPeer = (peers ?? []).find((row) => row.id === selected && row.online === true);
-      const canAppend = appendAvailable(selectedPeer);
+      const canAppend = appendAvailable(selectedPeer, true);
 
       // Default to whatever the peer state allows; the operator can override
       // until the selected peer or the peer list changes.
@@ -1270,9 +1285,9 @@ window.__ModuleLoader__.load({
                 modeOption(
                   'update',
                   t('modeUpdate'),
-                  t('modeUpdateHint'),
+                  selectedPeer?.active === true ? t('modeUpdateHintQueued') : t('modeUpdateHint'),
                   canAppend,
-                  blockedReason('state', selectedPeer, t),
+                  blockedReason('state', selectedPeer, t, true),
                 ),
               ),
           mode === 'new'

@@ -96,6 +96,44 @@ test('a continued session is updated in place over the wire, and divergence is r
   assert.equal(receiver.sessions.get(sessionId).events[5].data.text, 'local turn', 'the receiver copy is untouched');
 });
 
+test('an update to a peer that holds the session open is queued until it restarts', async (t) => {
+  const sender = await makeEnv();
+  const receiver = await makeEnv();
+  const listener = await startReceiver(receiver);
+  t.after(async () => listener.close());
+
+  const config = {
+    ...sender.config,
+    token: TOKEN,
+    instance: { id: 'peer-a', name: 'A' },
+    peers: [{ id: 'peer-b', name: 'B', url: listener.url }],
+  };
+  const ferry = createFerry({ ctx: sender.ctx, config, transfer: sender.transfer });
+
+  const sessionId = 'session-queued-flow';
+  const header = { id: sessionId, version: 4, createdAt: 1000, cwd: sender.workspace };
+  sender.sessions.set(sessionId, { header, events: events(0, 3) });
+  const first = await ferry.push({ peerId: 'peer-b', sessionId, mode: 'new' });
+  assert.equal(first.status, 'imported');
+
+  sender.sessions.get(sessionId).events.push(event(3), event(4));
+  // The peer's GUI resumed the session, so its Agent holds the write handle.
+  receiver.agents.set(sessionId, { status: 'idle' });
+
+  const plan = await ferry.pushPlan({ sessionId });
+  assert.equal(plan.peers[0].state, 'behind');
+  assert.equal(plan.peers[0].active, true, 'the plan says why the update has to wait');
+
+  const queued = await ferry.push({ peerId: 'peer-b', sessionId, mode: 'update' });
+  assert.equal(queued.status, 'queued');
+  assert.equal(receiver.sessions.get(sessionId).events.length, 3, 'nothing is written while the peer holds the session');
+
+  receiver.agents.delete(sessionId);
+  const applied = await receiver.transfer.applyPending();
+  assert.equal(applied.length, 1);
+  assert.equal(receiver.sessions.get(sessionId).events.length, 5, 'the next start appends what was missing');
+});
+
 test('pulling a session that moved on locally appends only what is missing', async (t) => {
   const source = await makeEnv();
   const target = await makeEnv();
