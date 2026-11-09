@@ -4,6 +4,7 @@ import http from 'node:http';
 import path from 'node:path';
 import test from 'node:test';
 import { createFerry } from '../lib/ferry.js';
+import { workspaceKey } from '../lib/paths.js';
 import { createPeerHandler } from '../lib/routes.js';
 import { event, events, makeEnv } from './env.js';
 
@@ -58,7 +59,15 @@ test('a continued session is updated in place over the wire, and divergence is r
   const first = await ferry.push({ peerId: 'peer-b', sessionId, mode: 'new' });
   assert.equal(first.status, 'imported');
   const target = first.targetDir;
-  assert.equal(target, path.join(receiver.root, 'incoming', 'workspace-flow'));
+  // The incoming directory is keyed by the sending workspace, not the session.
+  assert.equal(
+    target,
+    path.join(
+      receiver.root,
+      'incoming',
+      `workspace-${workspaceKey({ peerId: 'peer-a', sourceRoot: sender.workspace })}`,
+    ),
+  );
   assert.equal(await fs.readFile(path.join(target, 'note.md'), 'utf8'), 'one');
 
   // The sender keeps working; the receiver still holds the older copy.
@@ -134,6 +143,45 @@ test('an update to a peer that holds the session open is queued until it restart
   assert.equal(receiver.sessions.get(sessionId).events.length, 5, 'the next start appends what was missing');
 });
 
+test('two sessions from one workspace share one directory on the peer', async (t) => {
+  const sender = await makeEnv();
+  const receiver = await makeEnv();
+  const listener = await startReceiver(receiver);
+  t.after(async () => listener.close());
+
+  const config = {
+    ...sender.config,
+    token: TOKEN,
+    instance: { id: 'peer-a', name: 'A' },
+    peers: [{ id: 'peer-b', name: 'B', url: listener.url }],
+  };
+  const ferry = createFerry({ ctx: sender.ctx, config, transfer: sender.transfer });
+
+  for (const [id, text] of [
+    ['session-one', 'first'],
+    ['session-two', 'second'],
+  ]) {
+    sender.sessions.set(id, { header: { id, version: 4, createdAt: 1000, cwd: sender.workspace }, events: events(0, 2) });
+    await fs.writeFile(path.join(sender.workspace, `${id}.md`), text);
+  }
+
+  const first = await ferry.push({ peerId: 'peer-b', sessionId: 'session-one', mode: 'new' });
+  assert.equal(first.status, 'imported');
+
+  // The peer now holds a copy of the workspace, so the second session lands
+  // in the same directory and reports that a merge is needed.
+  const plan = await ferry.pushPlan({ sessionId: 'session-two' });
+  assert.equal(plan.peers[0].targetDir, first.targetDir);
+  assert.equal(plan.peers[0].needsMerge, true);
+
+  const second = await ferry.push({ peerId: 'peer-b', sessionId: 'session-two', mode: 'new', merge: true });
+  assert.equal(second.status, 'imported');
+  assert.equal(second.targetDir, first.targetDir);
+
+  assert.equal(receiver.sessions.get('session-one').header.cwd, first.targetDir);
+  assert.equal(receiver.sessions.get('session-two').header.cwd, first.targetDir);
+  assert.deepEqual((await fs.readdir(first.targetDir)).sort(), ['session-one.md', 'session-two.md']);
+});
 test('pulling a session that moved on locally appends only what is missing', async (t) => {
   const source = await makeEnv();
   const target = await makeEnv();

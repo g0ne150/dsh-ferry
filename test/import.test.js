@@ -106,6 +106,31 @@ test('without queueing, an open session still refuses the update', async () => {
   );
 });
 
+test('an update writes into the directory the copy already lives in', async () => {
+  const env = await makeEnv();
+  const id = 'session-stays';
+  const header = { id, version: 4, createdAt: 1000, cwd: env.workspace };
+  // Landed somewhere the default mapping would not choose today.
+  const landing = path.join(env.root, 'legacy-dir');
+  const first = await env.transfer.importSession({
+    body: buildBundle({ id, header, events: events(0, 2), files: [{ path: 'a.md', content: 'a' }] }),
+    targetDir: landing,
+    merge: false,
+  });
+  assert.equal(first.status, 'imported');
+  assert.equal(first.targetDir, landing);
+
+  const second = await env.transfer.importSession({
+    body: buildBundle({ id, header, events: events(0, 4), files: [{ path: 'b.md', content: 'b' }] }),
+    update: true,
+    merge: true,
+  });
+  assert.equal(second.status, 'updated');
+  assert.equal(second.targetDir, landing, 'the update keeps the directory the copy already uses');
+  assert.deepEqual((await fs.readdir(landing)).sort(), ['a.md', 'b.md']);
+  assert.equal(env.sessions.get(id).header.cwd, landing);
+});
+
 test('an update renumbers the tail when the receiver wrote more runtime events', async () => {
   const env = await makeEnv();
   const id = 'session-offset';

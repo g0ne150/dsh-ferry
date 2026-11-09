@@ -147,6 +147,8 @@ window.__ModuleLoader__.load({
       running: 'running',
       targetDir: 'Target directory',
       targetDirHint: 'Leave blank to map automatically: same path when it exists here, else the incoming directory.',
+      pushTargetDirHint: 'Directory on the peer; leave blank to map automatically',
+      pushTargetAuto: 'Will land in {path}',
       merge: 'Merge into an existing directory',
       mergeHint: 'Overwrites differing files after backing them up.',
       pull: 'Pull',
@@ -293,6 +295,8 @@ window.__ModuleLoader__.load({
       running: '运行中',
       targetDir: '目标目录',
       targetDirHint: '留空则自动映射：本机存在同路径就用它，否则放到接收目录。',
+      pushTargetDirHint: '对端目录，留空自动映射',
+      pushTargetAuto: '将落到 {path}',
       merge: '合并到已有目录',
       mergeHint: '覆盖同名文件前会先备份。',
       pull: '拉取',
@@ -1052,6 +1056,8 @@ window.__ModuleLoader__.load({
       const [selected, setSelected] = useState('');
       const [mode, setMode] = useState('new');
       const [merge, setMerge] = useState(true);
+      const [targetDir, setTargetDir] = useState('');
+      const targetRef = React.useRef('');
       const [busy, setBusy] = useState(false);
       const [error, setError] = useState(null);
       const dialogRef = React.useRef(null);
@@ -1062,7 +1068,12 @@ window.__ModuleLoader__.load({
         setChecking(true);
         setStatusError(null);
         try {
-          const payload = await rpc({ action: 'pushPlan', sessionId: current.sessionId });
+          const requested = targetRef.current.trim();
+          const payload = await rpc({
+            action: 'pushPlan',
+            sessionId: current.sessionId,
+            ...(requested === '' ? {} : { targetDir: requested }),
+          });
           const rows = Array.isArray(payload.peers) ? payload.peers : [];
           setPlan(payload.session ?? null);
           setPeers(rows);
@@ -1087,6 +1098,8 @@ window.__ModuleLoader__.load({
             setBusy(false);
             setError(null);
             setMerge(true);
+            setTargetDir('');
+            targetRef.current = '';
             setPeers(null);
             setPlan(null);
             setMode('new');
@@ -1104,6 +1117,9 @@ window.__ModuleLoader__.load({
       // until the selected peer or the peer list changes.
       useEffect(() => {
         setMode(canAppend ? 'update' : 'new');
+        // A directory that already holds this workspace is merged, not
+        // refused; the operator still sees the box ticked and can clear it.
+        setMerge(selectedPeer?.needsMerge === true);
       }, [selected, peers]);
 
       useEffect(() => {
@@ -1133,7 +1149,15 @@ window.__ModuleLoader__.load({
           durationMs: 0,
         });
         try {
-          const result = await rpc({ action: 'push', peerId: peer.id, sessionId: state.sessionId, mode, merge });
+          const requested = targetRef.current.trim();
+          const result = await rpc({
+            action: 'push',
+            peerId: peer.id,
+            sessionId: state.sessionId,
+            mode,
+            merge,
+            ...(requested === '' ? {} : { targetDir: requested }),
+          });
           const summary = noticeFor(result, t);
           const warnings = (result.warnings ?? []).map((warning) => codeText(warning.code ?? warning, t));
           toasts.push({
@@ -1281,6 +1305,31 @@ window.__ModuleLoader__.load({
             ),
           ),
           body,
+          peer === undefined
+            ? null
+            : h(
+                'label',
+                { className: 'ferry-stack' },
+                h('span', { className: 'ferry-modal-hint' }, t('targetDir')),
+                h('input', {
+                  className: 'ferry-input wide',
+                  value: targetDir,
+                  placeholder: t('pushTargetDirHint'),
+                  disabled: busy,
+                  onChange: (event) => {
+                    targetRef.current = event.target.value;
+                    setTargetDir(event.target.value);
+                  },
+                  onBlur: refreshPeers,
+                }),
+                targetDir.trim() === ''
+                  ? h(
+                      'span',
+                      { className: 'ferry-mode-hint' },
+                      fill(t('pushTargetAuto'), { path: peer.targetDir ?? targetDir }),
+                    )
+                  : null,
+              ),
           peer === undefined
             ? null
             : h(

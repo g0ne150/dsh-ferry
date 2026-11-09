@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { canonicalRoots, chooseImportTarget, isInside, resolveTargetDir } from '../lib/paths.js';
+import { canonicalRoots, chooseImportTarget, isInside, resolveTargetDir, workspaceKey } from '../lib/paths.js';
 import { isSafeRelativePath, resolveBelow } from '../lib/workspace.js';
 
 test('relative path safety rejects traversal and absolute forms', () => {
@@ -74,21 +74,30 @@ test('received workspaces reuse an existing mapped directory, else the incoming 
     });
     assert.equal(requested, path.join(await fs.realpath(root), 'elsewhere'));
 
+    const missingSource = path.join(root, 'projects', 'missing');
     const missing = await chooseImportTarget({
-      sourceRoot: path.join(root, 'projects', 'missing'),
+      sourceRoot: missingSource,
       sessionId: 'session-0123456789abcdef',
+      peerId: 'peer-a',
       incomingRoot,
       roots,
     });
-    assert.equal(missing, path.join(await fs.realpath(root), 'incoming', 'missing-01234567'));
+    assert.equal(
+      missing,
+      path.join(await fs.realpath(root), 'incoming', `missing-${workspaceKey({ peerId: 'peer-a', sourceRoot: missingSource })}`),
+    );
 
     const outside = await chooseImportTarget({
       sourceRoot: '/etc',
       sessionId: 'session-abcdef0123456789',
+      peerId: 'peer-a',
       incomingRoot,
       roots,
     });
-    assert.equal(outside, path.join(await fs.realpath(root), 'incoming', 'etc-abcdef01'));
+    assert.equal(
+      outside,
+      path.join(await fs.realpath(root), 'incoming', `etc-${workspaceKey({ peerId: 'peer-a', sourceRoot: '/etc' })}`),
+    );
 
     await assert.rejects(
       () =>
