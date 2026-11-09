@@ -124,7 +124,7 @@ ferry_pull(peer="workstation", session="session-…", targetDir="/home/zapan/pro
 - 目标目录已存在且非空：必须显式 `merge`（UI 勾选 / 工具参数），否则拒绝。
 - `merge` 覆盖同名文件前，会先把旧文件备份到 `<dataDir>/backups/<时间戳>-<会话>/`，结果里返回备份路径。
 - 同 id 且同内容的会话重复推送：默认返回 `exists`，不覆盖任何内容；显式 `mode=update` 时只同步工作区（0 条事件）。
-- 对方打开着会话时，`mode=update` 返回 `queued`：包存到对端，对端下次启动时应用。
+- 对方打开着会话时，`mode=update` 返回 `queued`：包存到对端，对端下次启动时应用。UI 里此时“追加更新”仍可选，只是提示会延后应用；不必先关掉对方的会话。
 - 对方是旧副本：`mode=update` 追加缺失事件（`status=updated`）。
 - 同 id 但两边都已续写（分叉）：拒绝追加，要求新建会话（`forkId` / `mode=new`）。拉取时同样规则。
 - 任何校验和失败都会在写入工作区之前终止（先落暂存目录），已写入的文件会回滚。
